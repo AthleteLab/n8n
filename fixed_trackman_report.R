@@ -166,6 +166,16 @@ create_trackman_report <- function(data, pitcher_name) {
     x_ticks_y = rep(c(-1, 1), times = 5)
   )
   
+  # Calculate average movement for each pitch type
+  avg_movement <- pitcher_data %>%
+    group_by(PitchType) %>%
+    summarise(
+      avg_horz = mean(HorzBreak, na.rm = TRUE),
+      avg_vert = mean(InducedVertBreak, na.rm = TRUE),
+      .groups = 'drop'
+    ) %>%
+    left_join(pitch_metrics %>% select(PitchType, `Usage%`), by = "PitchType")
+  
   movement_plot <- ggplot(pitcher_data, aes(x = HorzBreak, y = InducedVertBreak, color = PitchType)) +
     # Add intercept lines
     geom_hline(yintercept = 0, color = "black", size = 0.5) +
@@ -187,12 +197,19 @@ create_trackman_report <- function(data, pitcher_name) {
                      color = "red", size = 1, alpha = 0.7, inherit.aes = FALSE)
       }
     } +
-    # Add the pitch points
-    geom_point() +
+    # Add the individual pitch points
+    geom_point(alpha = 0.6) +
+    # Add average movement dots with black borders, sized by usage%
+    geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType, size = `Usage%`), 
+               stroke = 1.5, shape = 21, fill = NA, inherit.aes = FALSE) +
+    geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType, size = `Usage%`), 
+               stroke = 0, shape = 16, inherit.aes = FALSE) +
+    # Scale the size of the average dots
+    scale_size_continuous(range = c(3, 8), guide = "none") +
     coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
     theme_minimal() +
     labs(title = "Pitch Movements", 
-         subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", most_used_pitch, " avg arm angle (", round(avg_arm_angle, 1), "°)") else "")
+         subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", most_used_pitch, " avg arm angle (", round(avg_arm_angle, 1), "°). Large dots = avg movement") else "Large dots = avg movement")
   
   # 5. Create pitch usage pie chart
   usage_plot <- pitcher_data %>%
