@@ -199,13 +199,16 @@ create_trackman_report <- function(data, pitcher_name) {
     } +
     # Add the individual pitch points
     geom_point(alpha = 0.6) +
-    # Add average movement dots with black borders, sized by usage%
-    geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType, size = `Usage%`), 
-               stroke = 1.5, shape = 21, fill = NA, inherit.aes = FALSE) +
+    # Add average movement dots with bold black borders, sized by usage%
+    # First layer: Bold black border (larger)
+    geom_point(data = avg_movement %>% mutate(border_size = `Usage%` * 1.3), 
+               aes(x = avg_horz, y = avg_vert, size = border_size), 
+               color = "black", stroke = 0, shape = 16, inherit.aes = FALSE) +
+    # Second layer: Colored fill (smaller)
     geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType, size = `Usage%`), 
                stroke = 0, shape = 16, inherit.aes = FALSE) +
     # Scale the size of the average dots
-    scale_size_continuous(range = c(3, 8), guide = "none") +
+    scale_size_continuous(range = c(4, 10), guide = "none") +
     coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
     theme_minimal() +
     labs(title = "Pitch Movements", 
