@@ -278,24 +278,32 @@ create_trackman_report <- function(data, pitcher_name) {
     label = c("12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")
   )
   
-  # Create tilt points from spin axis - positioned on the outer edge
+  # Create tilt frequency data for bumpy edge
   if ("SpinAxis" %in% names(pitcher_data)) {
-    tilt_points <- pitcher_data %>%
+    # Create bins for spin axis (every 10 degrees)
+    tilt_freq <- pitcher_data %>%
       filter(!is.na(SpinAxis)) %>%
       mutate(
-        # Convert spin axis to clock position (same logic as spin_to_tilt function)
         normalized_spin = (SpinAxis + 360) %% 360,
-        # Use same conversion as tilt function: (spin_axis/30 + 6) % 12
-        clock_decimal = (normalized_spin / 30 + 6) %% 12,
+        # Bin into 10-degree segments
+        spin_bin = round(normalized_spin / 10) * 10,
+        spin_bin = ifelse(spin_bin == 360, 0, spin_bin)
+      ) %>%
+      count(spin_bin, PitchType) %>%
+      mutate(
+        # Convert to clock position
+        clock_decimal = (spin_bin / 30 + 6) %% 12,
         clock_decimal = ifelse(clock_decimal == 0, 12, clock_decimal),
-        # Convert clock position to angle (12:00 = top, clockwise)
-        clock_angle_deg = (clock_decimal - 3) * 30, # 3:00 = 0°, 12:00 = 270°
+        # Convert to angle for positioning
+        clock_angle_deg = (clock_decimal - 3) * 30,
         theta = clock_angle_deg * pi / 180,
-        x = 0.95 * cos(-theta), # Negative for proper clockwise direction
-        y = 0.95 * sin(-theta)
+        # Create bumpy edge based on frequency
+        radius = 0.8 + (n / max(n)) * 0.3, # Base radius + frequency bump
+        x = radius * cos(-theta),
+        y = radius * sin(-theta)
       )
   } else {
-    tilt_points <- NULL
+    tilt_freq <- NULL
   }
   
   tilt_plot <- ggplot() +
@@ -309,12 +317,14 @@ create_trackman_report <- function(data, pitcher_name) {
                  color = "black", size = 0.5) +
     # Clock numbers inside
     geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 4, fontface = "bold") +
-    # Tilt points on outer edge - larger for visibility
+    # Frequency bumps around the edge
     {
-      if (!is.null(tilt_points) && nrow(tilt_points) > 0) {
-        geom_point(data = tilt_points, aes(x = x, y = y, color = PitchType), size = 4, alpha = 0.8)
+      if (!is.null(tilt_freq) && nrow(tilt_freq) > 0) {
+        geom_point(data = tilt_freq, aes(x = x, y = y, color = PitchType, size = n), alpha = 0.8)
       }
     } +
+    # Scale the size of frequency bumps
+    scale_size_continuous(range = c(2, 8), guide = "none") +
     coord_fixed(xlim = c(-1.2, 1.2), ylim = c(-1.2, 1.2)) +
     theme_void() +
     labs(title = "Tilt Consistency") +
