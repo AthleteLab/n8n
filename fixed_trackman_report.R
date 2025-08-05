@@ -289,25 +289,27 @@ create_trackman_report <- function(data, pitcher_name) {
     y_limits <- c(0, 7.5)
   }
   
-  # Create mound shape (ellipse going up to 10 inches = 0.83 feet)
+  # Create realistic mound shape (10 inches high = 0.83 feet, 18 feet diameter)
+  mound_angles <- seq(0, pi, length.out = 100)
   mound_data <- data.frame(
-    x = seq(-1, 1, length.out = 100),
-    y = 0.83 * sqrt(1 - (seq(-1, 1, length.out = 100))^2)  # Semi-ellipse for mound
+    x = 3 * cos(mound_angles),  # 18 feet diameter (9 foot radius)
+    y = 0.83 * sin(mound_angles)  # 10 inch height with smooth curve
   )
   
-  # Create pitching rubber (18 inches long, 4 inches wide, converted to feet)
+  # Create pitching rubber inset into mound (24" x 6" regulation, slightly recessed)
+  rubber_height <- 0.75  # Slightly below mound peak for realistic look
   rubber_data <- data.frame(
-    x = c(-0.75, 0.75, 0.75, -0.75, -0.75),  # 18 inches = 1.5 feet
-    y = c(0.83, 0.83, 0.83 + 0.33, 0.83 + 0.33, 0.83)  # 4 inches = 0.33 feet on top of mound
+    x = c(-1, 1, 1, -1, -1),  # 24 inches = 2 feet long
+    y = c(rubber_height, rubber_height, rubber_height + 0.05, rubber_height + 0.05, rubber_height)  # 6 inches = 0.5 feet wide, slightly raised
   )
   
   release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
     # Add mound
     geom_polygon(data = mound_data, aes(x = x, y = y), 
-                 fill = "tan", color = "brown", size = 0.5, inherit.aes = FALSE) +
-    # Add pitching rubber
+                 fill = "#DEB887", color = "#8B7355", size = 0.8, inherit.aes = FALSE) +
+    # Add pitching rubber (inset into mound)
     geom_polygon(data = rubber_data, aes(x = x, y = y), 
-                 fill = "white", color = "black", size = 1, inherit.aes = FALSE) +
+                 fill = "#F5F5F5", color = "#2F2F2F", size = 1.2, inherit.aes = FALSE) +
     # Add arm angle lines from central point to cluster centers
     geom_segment(data = avg_release_points, 
                  aes(x = line_start_x, y = line_start_y, 
