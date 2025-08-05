@@ -239,41 +239,53 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Pitch Release Points")
   
   # 7. Create tilt consistency plot using base ggplot2
-  circle_df <- create_circle()
+  # Create smaller clock face
+  clock_face <- create_circle(radius = 0.8)
   
+  # Numbers inside the clock face
   clock_labels <- data.frame(
-    x = 1.1 * cos(seq(0, 2*pi, length.out = 13)[-13]),
-    y = 1.1 * sin(seq(0, 2*pi, length.out = 13)[-13]),
+    x = 0.65 * cos(seq(0, 2*pi, length.out = 13)[-13]),
+    y = 0.65 * sin(seq(0, 2*pi, length.out = 13)[-13]),
     label = c("6", "5", "4", "3", "2", "1", "12", "11", "10", "9", "8", "7")
   )
   
-  # Create tilt points from spin axis
+  # Create tilt points from spin axis - positioned on the outer edge
   if ("SpinAxis" %in% names(pitcher_data)) {
     tilt_points <- pitcher_data %>%
       filter(!is.na(SpinAxis)) %>%
       mutate(
         angle = (SpinAxis + 360) %% 360, # normalize
         theta = (pi/180) * (-angle + 90), # convert to radians, 0 at top, clockwise
-        x = cos(theta),
-        y = sin(theta)
+        x = 0.95 * cos(theta), # Position on outer edge
+        y = 0.95 * sin(theta)
       )
   } else {
     tilt_points <- NULL
   }
   
   tilt_plot <- ggplot() +
-    geom_path(data = circle_df, aes(x = x, y = y), color = "black") +
-    geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 5) +
+    # Clock face background (light gray fill)
+    geom_polygon(data = clock_face, aes(x = x, y = y), fill = "gray95", color = "black", size = 1) +
+    # Hour marks (small lines from edge toward center)
+    geom_segment(aes(x = 0.8 * cos(seq(0, 2*pi, length.out = 13)[-13]),
+                     y = 0.8 * sin(seq(0, 2*pi, length.out = 13)[-13]),
+                     xend = 0.7 * cos(seq(0, 2*pi, length.out = 13)[-13]),
+                     yend = 0.7 * sin(seq(0, 2*pi, length.out = 13)[-13])),
+                 color = "black", size = 0.5) +
+    # Clock numbers inside
+    geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 4, fontface = "bold") +
+    # Tilt points on outer edge - larger for visibility
     {
       if (!is.null(tilt_points) && nrow(tilt_points) > 0) {
-        geom_point(data = tilt_points, aes(x = x, y = y, color = PitchType), size = 3, alpha = 0.7)
+        geom_point(data = tilt_points, aes(x = x, y = y, color = PitchType), size = 4, alpha = 0.8)
       }
     } +
-    coord_fixed() +
+    coord_fixed(xlim = c(-1.2, 1.2), ylim = c(-1.2, 1.2)) +
     theme_void() +
     labs(title = "Tilt Consistency") +
     theme(plot.title = element_text(hjust = 0.5, size = 16),
-          plot.margin = margin(10, 10, 10, 10))
+          plot.margin = margin(10, 10, 10, 10),
+          legend.position = "none")
   
   # Get date range for the pitcher
   date_col <- NULL
