@@ -101,13 +101,25 @@ create_trackman_report <- function(data, pitcher_name) {
     group_by(PitchType) %>%
     summarise(
       Count = n(),
-      `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
-      `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
-      `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
-      `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
-      `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
-      Tilt = spin_to_tilt(mean(SpinAxis, na.rm = TRUE)),
-      Extension = round(mean(Extension, na.rm = TRUE), 1)
+      .groups = 'drop'
+    ) %>%
+    mutate(
+      `Usage%` = round((Count / sum(Count)) * 100, 1)
+    ) %>%
+    left_join(
+      pitcher_data %>%
+        group_by(PitchType) %>%
+        summarise(
+          `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
+          `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
+          `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
+          `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
+          `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
+          Tilt = spin_to_tilt(mean(SpinAxis, na.rm = TRUE)),
+          Extension = round(mean(Extension, na.rm = TRUE), 1),
+          .groups = 'drop'
+        ),
+      by = "PitchType"
     ) %>%
     # Fix Tilt formatting and handle spin rate issues
     mutate(
@@ -136,7 +148,7 @@ create_trackman_report <- function(data, pitcher_name) {
   # 4. Create pitch movement plot
   movement_plot <- ggplot(pitcher_data, aes(x = HorzBreak, y = InducedVertBreak, color = PitchType)) +
     geom_point() +
-    coord_fixed() +
+    coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
     theme_minimal() +
     labs(title = "Pitch Movements")
   
