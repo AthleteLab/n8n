@@ -171,11 +171,30 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       # Combine events and description for result with proper labels
       Result = case_when(
         !is.na(events) & events != "" ~ case_when(
-          events == "field_out" ~ "In Play, Out(s)",
+          # Strike outcomes
           events == "called_strike" ~ "Called Strike", 
+          events == "swinging_strike" ~ "Swinging Strike",
+          events == "swinging_strike_blocked" ~ "Swinging Strike",
+          events == "missed_bunt" ~ "Swinging Strike",
+          # Ball outcomes
           events == "ball" ~ "Ball",
-          events == "swinging_strike" ~ "Swing & Miss",
+          events == "blocked_ball" ~ "Ball",
+          # Foul outcomes
           events == "foul" ~ "Foul",
+          events == "foul_tip" ~ "Foul",
+          events == "foul_bunt" ~ "Foul",
+          events == "bunt_foul_tip" ~ "Foul",
+          # Hit by pitch
+          events == "hit_by_pitch" ~ "Hit By Pitch",
+          # In play outcomes - outs
+          events == "field_out" ~ "In Play, Out(s)",
+          events == "force_out" ~ "In Play, Out(s)",
+          events == "grounded_into_double_play" ~ "In Play, Out(s)",
+          events == "fielders_choice_out" ~ "In Play, Out(s)",
+          events == "double_play" ~ "In Play, Out(s)",
+          events == "sac_fly_double_play" ~ "In Play, Out(s)",
+          events == "triple_play" ~ "In Play, Out(s)",
+          # In play outcomes - hits
           events == "home_run" ~ "Home Run",
           events == "single" ~ "Single", 
           events == "double" ~ "Double",
@@ -183,7 +202,32 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
           events == "error" ~ "Error",
           TRUE ~ events
         ),
-        !is.na(description) & description != "" ~ description,
+        !is.na(description) & description != "" ~ case_when(
+          # Strike outcomes
+          description == "called_strike" ~ "Called Strike", 
+          description == "swinging_strike" ~ "Swinging Strike",
+          description == "swinging_strike_blocked" ~ "Swinging Strike",
+          description == "missed_bunt" ~ "Swinging Strike",
+          # Ball outcomes
+          description == "ball" ~ "Ball",
+          description == "blocked_ball" ~ "Ball",
+          # Foul outcomes
+          description == "foul" ~ "Foul",
+          description == "foul_tip" ~ "Foul",
+          description == "foul_bunt" ~ "Foul",
+          description == "bunt_foul_tip" ~ "Foul",
+          # Hit by pitch
+          description == "hit_by_pitch" ~ "Hit By Pitch",
+          # In play outcomes - outs
+          description == "field_out" ~ "In Play, Out(s)",
+          description == "force_out" ~ "In Play, Out(s)",
+          description == "grounded_into_double_play" ~ "In Play, Out(s)",
+          description == "fielders_choice_out" ~ "In Play, Out(s)",
+          description == "double_play" ~ "In Play, Out(s)",
+          description == "sac_fly_double_play" ~ "In Play, Out(s)",
+          description == "triple_play" ~ "In Play, Out(s)",
+          TRUE ~ description
+        ),
         TRUE ~ "Unknown"
       ),
       Count = if("balls" %in% names(.) & "strikes" %in% names(.)) paste0(balls, "-", strikes) else NA,
@@ -259,7 +303,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       mutate(
         # Zone determination (simplified - assumes strike zone exists)
         IsStrike = case_when(
-          grepl("Called Strike|Foul|Swing & Miss", Result, ignore.case = TRUE) ~ TRUE,
+          grepl("Called Strike|Foul|Swinging Strike", Result, ignore.case = TRUE) ~ TRUE,
           grepl("Ball", Result, ignore.case = TRUE) ~ FALSE,
           TRUE ~ NA
         ),
@@ -268,8 +312,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
             (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
           TRUE ~ NA
         ),
-        IsSwing = grepl("Foul|In Play|Swing & Miss", Result, ignore.case = TRUE),
-        IsWhiff = grepl("Swing & Miss", Result, ignore.case = TRUE),
+        IsSwing = grepl("Foul|In Play|Swinging Strike", Result, ignore.case = TRUE),
+        IsWhiff = grepl("Swinging Strike", Result, ignore.case = TRUE),
         IsCalledStrike = grepl("Called Strike", Result, ignore.case = TRUE)
       )
     
@@ -310,7 +354,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     data <- data %>%
       mutate(
         IsStrike = case_when(
-          grepl("Called Strike|Foul|Swing & Miss", Result, ignore.case = TRUE) ~ TRUE,
+          grepl("Called Strike|Foul|Swinging Strike", Result, ignore.case = TRUE) ~ TRUE,
           grepl("Ball", Result, ignore.case = TRUE) ~ FALSE,
           TRUE ~ NA
         ),
@@ -319,12 +363,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
             (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
           TRUE ~ NA
         ),
-        IsSwing = grepl("Foul|In Play|Swing & Miss", Result, ignore.case = TRUE),
-        IsWhiff = grepl("Swing & Miss", Result, ignore.case = TRUE),
+        IsSwing = grepl("Foul|In Play|Swinging Strike", Result, ignore.case = TRUE),
+        IsWhiff = grepl("Swinging Strike", Result, ignore.case = TRUE),
         IsCalledStrike = grepl("Called Strike", Result, ignore.case = TRUE),
         IsHit = grepl("Single|Double|Triple|Home Run|In Play", Result, ignore.case = TRUE),
         IsWalk = grepl("walk", Result, ignore.case = TRUE),
-        IsStrikeout = grepl("Swing & Miss", Result, ignore.case = TRUE),  # Simplified
+        IsStrikeout = grepl("Swinging Strike", Result, ignore.case = TRUE),  # Simplified
         # Additional fields for traditional stats
         IsSingle = grepl("Single", Result, ignore.case = TRUE),
         IsDouble = grepl("Double", Result, ignore.case = TRUE),
