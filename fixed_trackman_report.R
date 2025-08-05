@@ -77,6 +77,72 @@ print(names(data))
 print("\nAvailable pitchers:")
 print(unique(data$player_name))
 
+# Helper functions for the comprehensive report
+create_movement_plot <- function(data) {
+  # Simplified version of existing movement plot
+  avg_movement <- data %>%
+    group_by(PitchType) %>%
+    summarise(
+      avg_horz = mean(HorzBreak, na.rm = TRUE),
+      avg_vert = mean(InducedVertBreak, na.rm = TRUE),
+      .groups = 'drop'
+    )
+  
+  ggplot(data, aes(x = HorzBreak, y = InducedVertBreak, color = PitchType)) +
+    geom_hline(yintercept = 0, color = "black", size = 0.5) +
+    geom_vline(xintercept = 0, color = "black", size = 0.5) +
+    geom_point(alpha = 0.6) +
+    geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType), 
+               size = 4, inherit.aes = FALSE) +
+    scale_color_manual(values = pitch_colors) +
+    coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
+    theme_minimal() +
+    labs(title = "Pitch Movement", subtitle = "Pitcher View")
+}
+
+create_release_plot <- function(data) {
+  # Simplified version of existing release plot
+  ggplot(data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
+    geom_point(alpha = 0.7, size = 2) +
+    scale_color_manual(values = pitch_colors) +
+    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 7.5)) +
+    theme_minimal() +
+    labs(title = "Release Point", subtitle = "Pitcher View")
+}
+
+create_tilt_plot <- function(data) {
+  # Simplified tilt plot
+  clock_face <- create_circle(radius = 0.8)
+  
+  ggplot() +
+    geom_polygon(data = clock_face, aes(x = x, y = y), fill = "gray95", color = "black") +
+    coord_fixed(xlim = c(-1.2, 1.2), ylim = c(-1.2, 1.2)) +
+    theme_void() +
+    labs(title = "Tilt Consistency")
+}
+
+create_velocity_plot <- function(data) {
+  ggplot(data, aes(x = RelSpeed, fill = PitchType)) +
+    geom_density(alpha = 0.6) +
+    facet_grid(PitchType ~ .) +
+    scale_fill_manual(values = pitch_colors) +
+    theme_minimal() +
+    labs(title = "Velocity Consistency") +
+    theme(legend.position = "none")
+}
+
+create_heatmaps_by_pitch <- function(data) {
+  ggplot(data, aes(x = PlateLocSide, y = PlateLocHeight)) +
+    geom_density_2d_filled(alpha = 0.7) +
+    geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
+              fill = NA, color = "black", size = 1) +
+    facet_wrap(~ PitchType) +
+    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
+    theme_minimal() +
+    labs(title = "Location Heatmaps by Pitch Type") +
+    theme(legend.position = "none")
+}
+
 # NEW COMPREHENSIVE MULTI-PAGE REPORT FUNCTION
 create_comprehensive_pitching_report <- function(data, pitcher_name) {
   
@@ -421,5 +487,178 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   print(paste("Generated comprehensive 4-page report for", pitcher_name))
 }
 
-# Example usage
+# ORIGINAL SINGLE-PAGE FUNCTION (UNCHANGED)
+create_trackman_report <- function(data, pitcher_name) {
+  
+  # Filter data for the specified pitcher using player_name instead of Pitcher
+  pitcher_data <- data %>%
+    filter(player_name == pitcher_name)
+  
+  # Map Baseball Savant column names to your expected names
+  # You'll need to adjust these based on what columns are actually in your data
+  pitcher_data <- pitcher_data %>%
+    mutate(
+      # Map Baseball Savant names to your code's expected names
+      PitchType = if("pitch_name" %in% names(.)) pitch_name else if("pitch_type" %in% names(.)) pitch_type else NA,
+      RelSpeed = if("release_speed" %in% names(.)) release_speed else NA,
+      # Try multiple possible spin rate column names
+      SpinRate = if("release_spin_rate" %in% names(.)) release_spin_rate
+      else if("release_spin" %in% names(.)) release_spin 
+      else if("spin_rate" %in% names(.)) spin_rate 
+      else if("spin_rate_deprecated" %in% names(.)) spin_rate_deprecated 
+      else NA,
+      InducedVertBreak = if("pfx_z" %in% names(.)) pfx_z * 12 else NA,  # Convert feet to inches
+      HorzBreak = if("pfx_x" %in% names(.)) pfx_x * 12 else NA,  # Convert feet to inches
+      SpinAxis = if("spin_axis" %in% names(.)) spin_axis else NA,
+      Extension = if("release_extension" %in% names(.)) release_extension else NA,
+      PlateLocSide = if("plate_x" %in% names(.)) plate_x else NA,
+      PlateLocHeight = if("plate_z" %in% names(.)) plate_z else NA,
+      RelSide = if("release_pos_x" %in% names(.)) release_pos_x else NA,
+      RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA,
+      ArmAngle = if("arm_angle" %in% names(.)) arm_angle else NA
+    ) %>%
+    # Convert pitch names to abbreviations
+    mutate(
+      PitchType = case_when(
+        grepl("4-Seam|Four-Seam|Fastball", PitchType, ignore.case = TRUE) ~ "FF",
+        grepl("Sinker|2-Seam|Two-Seam", PitchType, ignore.case = TRUE) ~ "SI", 
+        grepl("Cutter", PitchType, ignore.case = TRUE) ~ "CT",
+        grepl("Changeup|Change", PitchType, ignore.case = TRUE) ~ "CH",
+        grepl("Slider", PitchType, ignore.case = TRUE) ~ "SL",
+        grepl("Sweeper", PitchType, ignore.case = TRUE) ~ "SW",
+        grepl("Curveball|Curve|Knuckle.*Curve|Slow.*Curve", PitchType, ignore.case = TRUE) ~ "CB",
+        grepl("Split|Splitter", PitchType, ignore.case = TRUE) ~ "SP",
+        TRUE ~ PitchType  # Keep original if no match
+      )
+    )
+  
+  # Debug: Check what spin rate values we actually have
+  print("Spin Rate column check:")
+  print(paste("Has release_spin_rate:", "release_spin_rate" %in% names(data)))
+  print(paste("Has release_spin:", "release_spin" %in% names(data)))
+  print(paste("Has spin_rate:", "spin_rate" %in% names(data)))
+  print(paste("SpinRate values summary:"))
+  print(summary(pitcher_data$SpinRate))
+  
+  # Remove rows where PitchType is NA
+  pitcher_data <- pitcher_data %>%
+    filter(!is.na(PitchType))
+  
+  # Detect handedness and adjust horizontal break for lefties
+  # For left-handed pitchers, flip the horizontal break sign
+  # You can determine this from release position or add it manually
+  is_lefty <- mean(pitcher_data$RelSide, na.rm = TRUE) > 0  # Lefties typically release from positive x
+  
+  if(is_lefty) {
+    pitcher_data <- pitcher_data %>%
+      mutate(
+        HorzBreak = -HorzBreak,  # Flip horizontal break for lefties
+        ArmAngle = 180 - ArmAngle,  # Flip arm angle for lefties (mirror across 90°)
+        RelSide = -RelSide  # Flip release side for lefties
+      )
+    print(paste("Detected left-handed pitcher:", pitcher_name, "- flipping horizontal break, arm angle, and release side values"))
+  } else {
+    print(paste("Detected right-handed pitcher:", pitcher_name))
+  }
+  
+  # 1. Create pitch metrics summary table
+  pitch_metrics <- pitcher_data %>%
+    group_by(PitchType) %>%
+    summarise(
+      Count = n(),
+      .groups = 'drop'
+    ) %>%
+    mutate(
+      `Usage%` = round((Count / sum(Count)) * 100, 1)
+    ) %>%
+    left_join(
+      pitcher_data %>%
+        group_by(PitchType) %>%
+        summarise(
+          `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
+          `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
+          `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
+          `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
+          `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
+          `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
+          Extension = round(mean(Extension, na.rm = TRUE), 1),
+          .groups = 'drop'
+        ) %>%
+        mutate(
+          Tilt = spin_to_tilt(`Avg Spin Axis`)
+        ) %>%
+        select(-`Avg Spin Axis`),
+      by = "PitchType"
+    ) %>%
+    # Fix Tilt formatting and handle spin rate issues
+    mutate(
+      # Don't replace spin rate with 0 - let's see what the actual values are
+      `Spin Rate` = ifelse(is.na(`Spin Rate`) | is.infinite(`Spin Rate`), NA, `Spin Rate`),
+      Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
+    )
+  
+  # Create the plots using the helper functions
+  movement_plot <- create_movement_plot(pitcher_data)
+  release_plot <- create_release_plot(pitcher_data)
+  tilt_plot <- create_tilt_plot(pitcher_data)
+  velo_plot <- create_velocity_plot(pitcher_data)
+  location_heatmap <- create_heatmaps_by_pitch(pitcher_data)
+  
+  # Get date range for the pitcher
+  date_col <- NULL
+  if ("game_date" %in% names(pitcher_data)) {
+    date_col <- "game_date"
+  } else if ("Date" %in% names(pitcher_data)) {
+    date_col <- "Date"
+  } else if ("GameDate" %in% names(pitcher_data)) {
+    date_col <- "GameDate"
+  }
+  
+  if (!is.null(date_col)) {
+    min_date <- min(as.Date(pitcher_data[[date_col]], format = "%Y-%m-%d"), na.rm = TRUE)
+    max_date <- max(as.Date(pitcher_data[[date_col]], format = "%Y-%m-%d"), na.rm = TRUE)
+    
+    if (min_date == max_date) {
+      date_str <- format(min_date, "%y-%m-%d")
+      filename_date <- format(min_date, "%Y-%m-%d")
+    } else {
+      date_str <- paste(format(min_date, "%y-%m-%d"), "to", format(max_date, "%y-%m-%d"))
+      filename_date <- paste0(format(min_date, "%Y-%m-%d"), "_to_", format(max_date, "%Y-%m-%d"))
+    }
+  } else {
+    date_str <- "(Date Unknown)"
+    filename_date <- "Unknown_Date"
+  }
+  
+  report_title <- paste(pitcher_name, "-", date_str)
+  
+  # Use normal table without row numbers
+  colored_table <- tableGrob(pitch_metrics, rows = NULL)
+  
+  # NEW LAYOUT: Name, Table, Movement|Release, Clock|Velocity, Heatmaps
+  final_plot <- grid.arrange(
+    # Row 1: Title/Name
+    textGrob(report_title, gp = gpar(fontsize = 20, fontface = "bold")),
+    # Row 2: Table
+    colored_table,
+    # Row 3: Movement Plot | Release Plot
+    arrangeGrob(movement_plot, release_plot, ncol = 2),
+    # Row 4: Clock | Velocity Consistency
+    arrangeGrob(tilt_plot, velo_plot, ncol = 2),
+    # Row 5: Heatmaps
+    location_heatmap,
+    heights = c(0.5, 2, 3, 3, 3)
+  )
+  
+  # Create filename with pitcher name and date(s)
+  clean_pitcher_name <- gsub("[, ]", "_", pitcher_name)
+  filename <- paste0(clean_pitcher_name, "_", filename_date, ".png")
+  ggsave(filename, final_plot, width = 12, height = 16)
+}
+
+# Example usage for both functions:
+# Single page report (existing):
+create_trackman_report(data, "Skubal, Tarik")
+
+# Multi-page comprehensive report (new):
 create_comprehensive_pitching_report(data, "Skubal, Tarik")
