@@ -301,8 +301,11 @@ create_trackman_report <- function(data, pitcher_name) {
         dens <- density(pitch_data$clock_decimal, bw = 0.3, from = 0, to = 12, n = 100)
         
         # Extend density to wrap around (connect 12 to 0)
-        angles <- c(dens$x, dens$x[1] + 12) * 30 - 90  # Convert to degrees, offset for 12 at top
+        clock_positions <- c(dens$x, dens$x[1] + 12)
         densities <- c(dens$y, dens$y[1])
+        
+        # Convert clock positions to angles (same as corrected clock)
+        angles <- (clock_positions - 3) * 30  # 3:00 = 0°, 12:00 = 270°
         
         # Normalize density to reasonable size
         max_dens <- max(densities)
@@ -312,13 +315,13 @@ create_trackman_report <- function(data, pitcher_name) {
         inner_radius <- 0.8
         outer_radius <- inner_radius + densities
         
-        # Convert to x,y coordinates
+        # Convert to x,y coordinates (negative theta for clockwise)
         theta_rad <- angles * pi / 180
         
         # Create polygon (inner edge + outer edge)
         polygon_data <- data.frame(
-          x = c(inner_radius * cos(theta_rad), rev(outer_radius * cos(theta_rad))),
-          y = c(inner_radius * sin(theta_rad), rev(outer_radius * sin(theta_rad))),
+          x = c(inner_radius * cos(-theta_rad), rev(outer_radius * cos(-theta_rad))),
+          y = c(inner_radius * sin(-theta_rad), rev(outer_radius * sin(-theta_rad))),
           PitchType = pitch
         )
         
