@@ -124,9 +124,10 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
              # Add fields needed for proper pitch numbering  
        Inning = if("inning" %in% names(.)) inning else NA,
        GamePK = if("game_pk" %in% names(.)) game_pk else NA,
-       ThroughOrder = if("n_thruorder_pitcher" %in% names(.)) n_thruorder_pitcher else NA,
-       PriorPA = if("n_priorpa_thisgame_player_at_bat" %in% names(.)) n_priorpa_thisgame_player_at_bat else NA,
-       Pitcher = if("pitcher" %in% names(.)) pitcher else NA
+               ThroughOrder = if("n_thruorder_pitcher" %in% names(.)) n_thruorder_pitcher else NA,
+        PriorPA = if("n_priorpa_thisgame_player_at_bat" %in% names(.)) n_priorpa_thisgame_player_at_bat else NA,
+        Pitcher = if("pitcher" %in% names(.)) pitcher else NA,
+        Batter = if("batter" %in% names(.)) batter else NA
     ) %>%
     # Convert pitch names to abbreviations
     mutate(
@@ -361,8 +362,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       mutate(
         # Pitch # based on row number within pitcher group
         `Pitch #` = row_number(),
-        # PA # using dense_rank of game_pk + n_priorpa_thisgame_player_at_bat combo
-        `PA #` = dense_rank(interaction(GamePK, PriorPA, drop = TRUE))
+        # PA # - each new batter is a new PA (1st batter = PA #1, 2nd batter = PA #2, etc.)
+        `PA #` = dense_rank(interaction(GamePK, Batter, drop = TRUE))
       ) %>%
       ungroup() %>%
       mutate(
