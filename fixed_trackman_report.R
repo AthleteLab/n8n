@@ -362,8 +362,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       mutate(
         # Pitch # based on row number within pitcher group
         `Pitch #` = row_number(),
-        # PA # - sequential counter, increments every time batter changes
-        `PA #` = cumsum(c(1, diff(as.numeric(as.factor(Batter))) != 0))
+        # PA # - sequential counter, increments every time count is 0-0 (new PA)
+        `PA #` = cumsum(Count == "0-0")
       ) %>%
       ungroup() %>%
       mutate(
