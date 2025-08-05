@@ -514,22 +514,20 @@ create_trackman_report <- function(data, pitcher_name) {
   
   report_title <- paste(pitcher_name, "-", date_str)
   
-  # Create colored table with pitch type colors
+  # Create table with colored background fills for pitch type values only
   colored_table <- tableGrob(pitch_metrics)
   
-  # Color the PitchType column based on pitch colors
+  # Add background fill colors to PitchType column values (not header)
   pitch_type_col <- which(colnames(pitch_metrics) == "PitchType")
   if(length(pitch_type_col) > 0) {
     for(i in 1:nrow(pitch_metrics)) {
       pitch_type <- pitch_metrics$PitchType[i]
       if(pitch_type %in% names(pitch_colors)) {
-        # Get the grob index for the pitch type cell
-        grob_index <- i + ncol(pitch_metrics)
+        # Calculate the correct grob index for the pitch type cell (skip header row)
+        grob_index <- (i + 1) * ncol(pitch_metrics) + pitch_type_col
         if(grob_index <= length(colored_table$grobs)) {
-          # Only set color, avoid fontface conflict
-          colored_table$grobs[[grob_index]]$gp$col <- pitch_colors[pitch_type]
-          # Remove any existing font parameter to avoid conflict
-          colored_table$grobs[[grob_index]]$gp$font <- NULL
+          # Set background fill color for the cell
+          colored_table$grobs[[grob_index]]$gp$fill <- pitch_colors[pitch_type]
         }
       }
     }
