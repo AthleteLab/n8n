@@ -248,11 +248,18 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Pitch Movements", 
          subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", primary_fastball, " avg arm angle (", round(avg_arm_angle, 1), "°). Large dots = avg movement") else "Large dots = avg movement")
   
-  # 5. Create release points plot
-  release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
-    geom_point() +
+  # 5. Create location heatmap for each pitch type
+  location_heatmap <- ggplot(pitcher_data, aes(x = PlateLocSide, y = PlateLocHeight)) +
+    geom_density_2d_filled(alpha = 0.7) +
+    geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
+              fill = NA, color = "black", size = 1) +
+    facet_wrap(~ PitchType, scales = "free") +
+    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
     theme_minimal() +
-    labs(title = "Pitch Release Points")
+    labs(title = "Location Heatmaps by Pitch Type",
+         x = "Horizontal Location (feet)", 
+         y = "Vertical Location (feet)") +
+    theme(legend.position = "none")
   
   # 7. Create tilt consistency plot using base ggplot2
   # Create smaller clock face
@@ -407,10 +414,10 @@ create_trackman_report <- function(data, pitcher_name) {
   # Combine all plots using gridExtra
   final_plot <- grid.arrange(
     tableGrob(pitch_metrics),
+    arrangeGrob(movement_plot, tilt_plot, ncol = 2),
     velo_plot,
-    arrangeGrob(location_plot, movement_plot, ncol = 2),
-    arrangeGrob(release_plot, tilt_plot, ncol = 2),
-    heights = c(2, 2, 3, 3),
+    location_heatmap,
+    heights = c(2, 3, 2, 3),
     top = textGrob(report_title, gp = gpar(fontsize = 20, fontface = "bold"))
   )
   
