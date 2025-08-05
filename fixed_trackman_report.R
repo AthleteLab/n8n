@@ -551,10 +551,10 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   # Save all pages
   clean_pitcher_name <- gsub("[, ]", "_", pitcher_name)
   
-  ggsave(paste0(clean_pitcher_name, "_Page1_Summary_", filename_date, ".png"), page1, width = 12, height = 16)
-  ggsave(paste0(clean_pitcher_name, "_Page2_vs_LHB_", filename_date, ".png"), page2, width = 12, height = 16)
-  ggsave(paste0(clean_pitcher_name, "_Page3_vs_RHB_", filename_date, ".png"), page3, width = 12, height = 16)
-  ggsave(paste0(clean_pitcher_name, "_Page4_PitchLog_", filename_date, ".png"), page4, width = 12, height = 16)
+  ggsave(paste0(clean_pitcher_name, "_Page1_Summary_", filename_date, ".pdf"), page1, width = 12, height = 16)
+  ggsave(paste0(clean_pitcher_name, "_Page2_vs_LHB_", filename_date, ".pdf"), page2, width = 12, height = 16)
+  ggsave(paste0(clean_pitcher_name, "_Page3_vs_RHB_", filename_date, ".pdf"), page3, width = 12, height = 16)
+  ggsave(paste0(clean_pitcher_name, "_Page4_PitchLog_", filename_date, ".pdf"), page4, width = 12, height = 16)
   
   print(paste("Generated comprehensive 4-page report for", pitcher_name))
 }
@@ -724,7 +724,7 @@ create_trackman_report <- function(data, pitcher_name) {
   
   # Create filename with pitcher name and date(s)
   clean_pitcher_name <- gsub("[, ]", "_", pitcher_name)
-  filename <- paste0(clean_pitcher_name, "_", filename_date, ".png")
+  filename <- paste0(clean_pitcher_name, "_", filename_date, ".pdf")
   ggsave(filename, final_plot, width = 12, height = 16)
 }
 
