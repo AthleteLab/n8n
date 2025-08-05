@@ -246,7 +246,7 @@ create_trackman_report <- function(data, pitcher_name) {
     coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
     theme_minimal() +
     labs(title = "Pitch Movement", 
-         subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", primary_fastball, " avg arm angle (", round(avg_arm_angle, 1), "°). Large dots = avg movement") else "Large dots = avg movement",
+         subtitle = "Pitcher View",
          x = "Horizontal Break (inches)", 
          y = "Induced Vertical Break (inches)")
   
@@ -319,7 +319,7 @@ create_trackman_report <- function(data, pitcher_name) {
     geom_point(alpha = 0.7, size = 2) +
     theme_minimal() +
     labs(title = "Release Point", 
-         subtitle = "Lines show arm angle paths from central point to each pitch cluster",
+         subtitle = "Pitcher View",
          x = "Release Side (feet)", 
          y = "Release Height (feet)") +
     coord_fixed(xlim = x_limits, ylim = y_limits)
