@@ -180,11 +180,14 @@ create_trackman_report <- function(data, pitcher_name) {
     
     if (min_date == max_date) {
       date_str <- format(min_date, "%y-%m-%d")
+      filename_date <- format(min_date, "%Y-%m-%d")
     } else {
       date_str <- paste(format(min_date, "%y-%m-%d"), "to", format(max_date, "%y-%m-%d"))
+      filename_date <- paste0(format(min_date, "%Y-%m-%d"), "_to_", format(max_date, "%Y-%m-%d"))
     }
   } else {
     date_str <- "(Date Unknown)"
+    filename_date <- "Unknown_Date"
   }
   
   report_title <- paste(pitcher_name, "-", date_str)
@@ -199,8 +202,9 @@ create_trackman_report <- function(data, pitcher_name) {
     top = textGrob(report_title, gp = gpar(fontsize = 20, fontface = "bold"))
   )
   
-  # Save the plot
-  filename <- paste0(gsub("[, ]", "_", pitcher_name), ".png")
+  # Create filename with pitcher name and date(s)
+  clean_pitcher_name <- gsub("[, ]", "_", pitcher_name)
+  filename <- paste0(clean_pitcher_name, "_", filename_date, ".png")
   ggsave(filename, final_plot, width = 12, height = 16)
 }
 
