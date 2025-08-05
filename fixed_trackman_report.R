@@ -54,7 +54,7 @@ create_trackman_report <- function(data, pitcher_name) {
   pitcher_data <- pitcher_data %>%
     mutate(
       # Map Baseball Savant names to your code's expected names
-      AutoPitchType = if("pitch_name" %in% names(.)) pitch_name else if("pitch_type" %in% names(.)) pitch_type else NA,
+      PitchType = if("pitch_name" %in% names(.)) pitch_name else if("pitch_type" %in% names(.)) pitch_type else NA,
       RelSpeed = if("release_speed" %in% names(.)) release_speed else NA,
       # Try multiple possible spin rate column names
       SpinRate = if("release_spin" %in% names(.)) release_spin 
@@ -69,6 +69,21 @@ create_trackman_report <- function(data, pitcher_name) {
       PlateLocHeight = if("plate_z" %in% names(.)) plate_z else NA,
       RelSide = if("release_pos_x" %in% names(.)) release_pos_x else NA,
       RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA
+    ) %>%
+    # Convert pitch names to abbreviations
+    mutate(
+      PitchType = case_when(
+        grepl("4-Seam|Four-Seam|Fastball", PitchType, ignore.case = TRUE) ~ "FF",
+        grepl("Sinker|2-Seam|Two-Seam", PitchType, ignore.case = TRUE) ~ "SI", 
+        grepl("Cutter", PitchType, ignore.case = TRUE) ~ "CT",
+        grepl("Changeup|Change", PitchType, ignore.case = TRUE) ~ "CH",
+        grepl("Slider", PitchType, ignore.case = TRUE) ~ "SL",
+        grepl("Curveball|Curve", PitchType, ignore.case = TRUE) ~ "CU",
+        grepl("Sweeper", PitchType, ignore.case = TRUE) ~ "SW",
+        grepl("Knuckle", PitchType, ignore.case = TRUE) ~ "KC",
+        grepl("Split|Splitter", PitchType, ignore.case = TRUE) ~ "FS",
+        TRUE ~ PitchType  # Keep original if no match
+      )
     )
   
   # Debug: Check what spin rate values we actually have
@@ -78,13 +93,13 @@ create_trackman_report <- function(data, pitcher_name) {
   print(paste("SpinRate values summary:"))
   print(summary(pitcher_data$SpinRate))
   
-  # Remove rows where AutoPitchType is NA
+  # Remove rows where PitchType is NA
   pitcher_data <- pitcher_data %>%
-    filter(!is.na(AutoPitchType))
+    filter(!is.na(PitchType))
   
   # 1. Create pitch metrics summary table
   pitch_metrics <- pitcher_data %>%
-    group_by(AutoPitchType) %>%
+    group_by(PitchType) %>%
     summarise(
       Count = n(),
       `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
@@ -103,15 +118,15 @@ create_trackman_report <- function(data, pitcher_name) {
     )
   
   # 2. Create velocity consistency plot
-  velo_plot <- ggplot(pitcher_data, aes(x = RelSpeed, fill = AutoPitchType)) +
+  velo_plot <- ggplot(pitcher_data, aes(x = RelSpeed, fill = PitchType)) +
     geom_density(alpha = 0.6) +
-    facet_grid(AutoPitchType ~ .) +
+    facet_grid(PitchType ~ .) +
     theme_minimal() +
     labs(title = "Velocity Consistency") +
     theme(legend.position = "none")
   
   # 3. Create pitch locations plot
-  location_plot <- ggplot(pitcher_data, aes(x = PlateLocSide, y = PlateLocHeight, color = AutoPitchType)) +
+  location_plot <- ggplot(pitcher_data, aes(x = PlateLocSide, y = PlateLocHeight, color = PitchType)) +
     geom_point() +
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black") +
@@ -120,7 +135,7 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Pitch Locations")
   
   # 4. Create pitch movement plot
-  movement_plot <- ggplot(pitcher_data, aes(x = HorzBreak, y = InducedVertBreak, color = AutoPitchType)) +
+  movement_plot <- ggplot(pitcher_data, aes(x = HorzBreak, y = InducedVertBreak, color = PitchType)) +
     geom_point() +
     coord_fixed() +
     theme_minimal() +
@@ -128,16 +143,16 @@ create_trackman_report <- function(data, pitcher_name) {
   
   # 5. Create pitch usage pie chart
   usage_plot <- pitcher_data %>%
-    count(AutoPitchType) %>%
+    count(PitchType) %>%
     mutate(pct = n/sum(n)) %>%
-    ggplot(aes(x = "", y = pct, fill = AutoPitchType)) +
+    ggplot(aes(x = "", y = pct, fill = PitchType)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar("y", start = 0) +
     theme_void() +
     labs(title = "Pitch Usage %")
   
   # 6. Create release points plot
-  release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = AutoPitchType)) +
+  release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
     geom_point() +
     theme_minimal() +
     labs(title = "Pitch Release Points")
@@ -170,7 +185,7 @@ create_trackman_report <- function(data, pitcher_name) {
     geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 5) +
     {
       if (!is.null(tilt_points) && nrow(tilt_points) > 0) {
-        geom_point(data = tilt_points, aes(x = x, y = y, color = AutoPitchType), size = 3, alpha = 0.7)
+        geom_point(data = tilt_points, aes(x = x, y = y, color = PitchType), size = 3, alpha = 0.7)
       }
     } +
     coord_fixed() +
