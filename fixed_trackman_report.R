@@ -102,12 +102,24 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA,
       ArmAngle = if("arm_angle" %in% names(.)) arm_angle else NA,
       BatterHand = if("stand" %in% names(.)) stand else NA,
-      # Combine events and description for result
-      Result = case_when(
-        !is.na(events) & events != "" ~ events,
-        !is.na(description) & description != "" ~ description,
-        TRUE ~ "Unknown"
-      ),
+             # Combine events and description for result with proper labels
+       Result = case_when(
+         !is.na(events) & events != "" ~ case_when(
+           events == "field_out" ~ "In Play, Out(s)",
+           events == "called_strike" ~ "Called Strike", 
+           events == "ball" ~ "Ball",
+           events == "swinging_strike" ~ "Swing & Miss",
+           events == "foul" ~ "Foul",
+           events == "home_run" ~ "Home Run",
+           events == "single" ~ "Single", 
+           events == "double" ~ "Double",
+           events == "triple" ~ "Triple",
+           events == "error" ~ "Error",
+           TRUE ~ events
+         ),
+         !is.na(description) & description != "" ~ description,
+         TRUE ~ "Unknown"
+       ),
       Count = if("balls" %in% names(.) & "strikes" %in% names(.)) paste0(balls, "-", strikes) else NA,
       # Add fields needed for proper pitch numbering
       Inning = if("inning" %in% names(.)) inning else NA,
@@ -173,8 +185,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
         mutate(
           # Zone determination (simplified - assumes strike zone exists)
           IsStrike = case_when(
-            grepl("strike|foul|called_strike", Result, ignore.case = TRUE) ~ TRUE,
-            grepl("ball", Result, ignore.case = TRUE) ~ FALSE,
+            grepl("Called Strike|Foul|Swing & Miss", Result, ignore.case = TRUE) ~ TRUE,
+            grepl("Ball", Result, ignore.case = TRUE) ~ FALSE,
             TRUE ~ NA
           ),
           IsInZone = case_when(
@@ -182,9 +194,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
               (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
             TRUE ~ NA
           ),
-          IsSwing = grepl("foul|hit_into_play|swinging_strike", Result, ignore.case = TRUE),
-          IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE),
-          IsCalledStrike = grepl("called_strike", Result, ignore.case = TRUE)
+          IsSwing = grepl("Foul|In Play|Swing & Miss", Result, ignore.case = TRUE),
+          IsWhiff = grepl("Swing & Miss", Result, ignore.case = TRUE),
+          IsCalledStrike = grepl("Called Strike", Result, ignore.case = TRUE)
         )
      
      # Calculate metrics
@@ -223,9 +235,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
            # Add derived fields for calculations
       data <- data %>%
         mutate(
-          IsStrike = case_when(
-            grepl("strike|foul|called_strike", Result, ignore.case = TRUE) ~ TRUE,
-            grepl("ball", Result, ignore.case = TRUE) ~ FALSE,
+                    IsStrike = case_when(
+            grepl("Called Strike|Foul|Swing & Miss", Result, ignore.case = TRUE) ~ TRUE,
+            grepl("Ball", Result, ignore.case = TRUE) ~ FALSE,
             TRUE ~ NA
           ),
           IsInZone = case_when(
@@ -233,19 +245,19 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
               (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
             TRUE ~ NA
           ),
-                     IsSwing = grepl("foul|hit_into_play|swinging_strike", Result, ignore.case = TRUE),
-           IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE),
-           IsCalledStrike = grepl("called_strike", Result, ignore.case = TRUE),
-          IsHit = grepl("single|double|triple|home_run|hit_into_play", Result, ignore.case = TRUE),
+          IsSwing = grepl("Foul|In Play|Swing & Miss", Result, ignore.case = TRUE),
+          IsWhiff = grepl("Swing & Miss", Result, ignore.case = TRUE),
+          IsCalledStrike = grepl("Called Strike", Result, ignore.case = TRUE),
+          IsHit = grepl("Single|Double|Triple|Home Run|In Play", Result, ignore.case = TRUE),
           IsWalk = grepl("walk", Result, ignore.case = TRUE),
-          IsStrikeout = grepl("strikeout", Result, ignore.case = TRUE),
+          IsStrikeout = grepl("Swing & Miss", Result, ignore.case = TRUE),  # Simplified
           # Additional fields for traditional stats
-          IsSingle = grepl("single", Result, ignore.case = TRUE),
-          IsDouble = grepl("double", Result, ignore.case = TRUE),
-          IsTriple = grepl("triple", Result, ignore.case = TRUE),
-          IsHomeRun = grepl("home_run", Result, ignore.case = TRUE),
-          IsAtBat = grepl("single|double|triple|home_run|field_out|strikeout|force_out|grounded_into_double_play", Result, ignore.case = TRUE),
-          IsRun = grepl("run", Result, ignore.case = TRUE)  # This is approximate without runner data
+          IsSingle = grepl("Single", Result, ignore.case = TRUE),
+          IsDouble = grepl("Double", Result, ignore.case = TRUE),
+          IsTriple = grepl("Triple", Result, ignore.case = TRUE),
+          IsHomeRun = grepl("Home Run", Result, ignore.case = TRUE),
+          IsAtBat = grepl("Single|Double|Triple|Home Run|In Play|Swing & Miss", Result, ignore.case = TRUE),
+          IsRun = grepl("Home Run", Result, ignore.case = TRUE)  # Simplified - just home runs
         )
      
            # Calculate traditional stats
@@ -304,30 +316,18 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   page1_velocity <- create_velocity_plot(pitcher_data)
   
   page1 <- grid.arrange(
-    # Centered title
-    textGrob(paste("Summary Overview:", pitcher_name), gp = gpar(fontsize = 20, fontface = "bold")),
-    textGrob(paste("Date Range:", date_range), gp = gpar(fontsize = 14)),
-    # Tables with better spacing and centering
-    arrangeGrob(
-      # Arsenal table centered with margins
-      arrangeGrob(
-        rectGrob(gp = gpar(col = NA, fill = NA)), 
-        page1_arsenal, 
-        rectGrob(gp = gpar(col = NA, fill = NA)), 
-        widths = c(0.05, 0.9, 0.05)
-      ),
-      # Summary table centered with margins  
-      arrangeGrob(
-        rectGrob(gp = gpar(col = NA, fill = NA)), 
-        page1_summary, 
-        rectGrob(gp = gpar(col = NA, fill = NA)), 
-        widths = c(0.05, 0.9, 0.05)
-      ),
-      ncol = 2, widths = c(0.6, 0.4)
-    ),
+    # Name/Title (same as original)
+    textGrob(paste(pitcher_name, "-", date_range), gp = gpar(fontsize = 20, fontface = "bold")),
+    # Arsenal Table (same as original)  
+    page1_arsenal,
+    # NEW: Summary Stats Table
+    page1_summary,
+    # Movement Plot | Release Plot (same as original)
     arrangeGrob(page1_movement, page1_release, ncol = 2),
+    # Clock | Velocity Consistency (same as original)
     arrangeGrob(page1_tilt, page1_velocity, ncol = 2),
-    heights = c(0.6, 0.4, 2.5, 3.5, 3.5)
+    # Note: Removed heatmaps since original report didn't have them on page 1
+    heights = c(0.5, 2, 1.5, 3, 3)
   )
   
   # PAGE 2 - vs LHB
@@ -365,8 +365,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
         HB = round(HorzBreak, 1),
         `Spin Rate` = round(SpinRate, 0),
         Tilt = spin_to_tilt(SpinAxis),
-        `Release Height` = round(RelHeight, 2),
-        `Release Side` = round(RelSide, 2),
+                 `Release Height` = round(RelHeight, 1),
+         `Release Side` = round(RelSide, 1),
         Extension = round(Extension, 2)
       ) %>%
       select(`Pitch #`, `PA #`, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
