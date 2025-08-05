@@ -242,11 +242,14 @@ create_trackman_report <- function(data, pitcher_name) {
   # Create smaller clock face
   clock_face <- create_circle(radius = 0.8)
   
-  # Numbers inside the clock face
+  # Numbers inside the clock face - 12 at top, going clockwise
+  clock_angles <- seq(0, 2*pi, length.out = 13)[-13]  # 12 positions
+  clock_angles <- clock_angles + pi/2  # Rotate so 12 is at top (add 90 degrees)
+  
   clock_labels <- data.frame(
-    x = 0.65 * cos(seq(0, 2*pi, length.out = 13)[-13]),
-    y = 0.65 * sin(seq(0, 2*pi, length.out = 13)[-13]),
-    label = c("6", "5", "4", "3", "2", "1", "12", "11", "10", "9", "8", "7")
+    x = 0.65 * cos(clock_angles),
+    y = 0.65 * sin(clock_angles),
+    label = c("12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")
   )
   
   # Create tilt points from spin axis - positioned on the outer edge
@@ -267,10 +270,10 @@ create_trackman_report <- function(data, pitcher_name) {
     # Clock face background (light gray fill)
     geom_polygon(data = clock_face, aes(x = x, y = y), fill = "gray95", color = "black", size = 1) +
     # Hour marks (small lines from edge toward center)
-    geom_segment(aes(x = 0.8 * cos(seq(0, 2*pi, length.out = 13)[-13]),
-                     y = 0.8 * sin(seq(0, 2*pi, length.out = 13)[-13]),
-                     xend = 0.7 * cos(seq(0, 2*pi, length.out = 13)[-13]),
-                     yend = 0.7 * sin(seq(0, 2*pi, length.out = 13)[-13])),
+    geom_segment(aes(x = 0.8 * cos(clock_angles),
+                     y = 0.8 * sin(clock_angles),
+                     xend = 0.7 * cos(clock_angles),
+                     yend = 0.7 * sin(clock_angles)),
                  color = "black", size = 0.5) +
     # Clock numbers inside
     geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 4, fontface = "bold") +
