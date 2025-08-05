@@ -514,8 +514,8 @@ create_trackman_report <- function(data, pitcher_name) {
   
   report_title <- paste(pitcher_name, "-", date_str)
   
-  # Use normal table without any coloring attempts
-  colored_table <- tableGrob(pitch_metrics)
+  # Use normal table without row numbers
+  colored_table <- tableGrob(pitch_metrics, rows = NULL)
   
   # NEW LAYOUT: Name, Table, Movement|Release, Clock|Velocity, Heatmaps
   final_plot <- grid.arrange(
