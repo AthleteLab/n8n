@@ -78,10 +78,9 @@ create_trackman_report <- function(data, pitcher_name) {
         grepl("Cutter", PitchType, ignore.case = TRUE) ~ "CT",
         grepl("Changeup|Change", PitchType, ignore.case = TRUE) ~ "CH",
         grepl("Slider", PitchType, ignore.case = TRUE) ~ "SL",
-        grepl("Curveball|Curve", PitchType, ignore.case = TRUE) ~ "CU",
         grepl("Sweeper", PitchType, ignore.case = TRUE) ~ "SW",
-        grepl("Knuckle", PitchType, ignore.case = TRUE) ~ "KC",
-        grepl("Split|Splitter", PitchType, ignore.case = TRUE) ~ "FS",
+        grepl("Curveball|Curve|Knuckle.*Curve|Slow.*Curve", PitchType, ignore.case = TRUE) ~ "CB",
+        grepl("Split|Splitter", PitchType, ignore.case = TRUE) ~ "SP",
         TRUE ~ PitchType  # Keep original if no match
       )
     )
