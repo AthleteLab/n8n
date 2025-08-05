@@ -285,10 +285,13 @@ create_trackman_report <- function(data, pitcher_name) {
       mutate(
         # Convert spin axis to clock position (same logic as spin_to_tilt function)
         normalized_spin = (SpinAxis + 360) %% 360,
-        # Convert directly: spin_axis degrees to clock position
-        # 180° = 12:00 (top), 0° = 6:00 (bottom)
-        theta = (normalized_spin * pi / 180) - pi/2, # Convert to radians, adjust so 180° is at top
-        x = 0.95 * cos(-theta), # Negative for clockwise direction to match clock
+        # Use same conversion as tilt function: (spin_axis/30 + 6) % 12
+        clock_decimal = (normalized_spin / 30 + 6) %% 12,
+        clock_decimal = ifelse(clock_decimal == 0, 12, clock_decimal),
+        # Convert clock position to angle (12:00 = top, clockwise)
+        clock_angle_deg = (clock_decimal - 3) * 30, # 3:00 = 0°, 12:00 = 270°
+        theta = clock_angle_deg * pi / 180,
+        x = 0.95 * cos(-theta), # Negative for proper clockwise direction
         y = 0.95 * sin(-theta)
       )
   } else {
