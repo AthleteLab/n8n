@@ -194,6 +194,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       PriorPA = if("n_priorpa_thisgame_player_at_bat" %in% names(.)) n_priorpa_thisgame_player_at_bat else NA,
       Pitcher = if("pitcher" %in% names(.)) pitcher else NA,
       Batter = if("batter" %in% names(.)) batter else NA,
+      # Add outs field
+      Outs = if("outs_when_up" %in% names(.)) outs_when_up else if("out_when_up" %in% names(.)) out_when_up else NA,
       # Add pitch sequence field if available
       PitchSequence = if("pitch_number" %in% names(.)) pitch_number else NA,
       # Create a proper datetime field for sorting
@@ -464,7 +466,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       `Release Side` = round(RelSide, 1),
       Extension = round(Extension, 2)
     ) %>%
-    select(`Pitch #`, `PA #`, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
+    select(`Pitch #`, `PA #`, Inning, Outs, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
            `Release Height`, `Release Side`, Extension, Result) %>%
     slice_head(n = 50)  # Limit for display
   
