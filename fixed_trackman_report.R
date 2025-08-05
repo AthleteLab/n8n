@@ -289,7 +289,25 @@ create_trackman_report <- function(data, pitcher_name) {
     y_limits <- c(0, 7.5)
   }
   
+  # Create mound shape (ellipse going up to 10 inches = 0.83 feet)
+  mound_data <- data.frame(
+    x = seq(-1, 1, length.out = 100),
+    y = 0.83 * sqrt(1 - (seq(-1, 1, length.out = 100))^2)  # Semi-ellipse for mound
+  )
+  
+  # Create pitching rubber (18 inches long, 4 inches wide, converted to feet)
+  rubber_data <- data.frame(
+    x = c(-0.75, 0.75, 0.75, -0.75, -0.75),  # 18 inches = 1.5 feet
+    y = c(0.83, 0.83, 0.83 + 0.33, 0.83 + 0.33, 0.83)  # 4 inches = 0.33 feet on top of mound
+  )
+  
   release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
+    # Add mound
+    geom_polygon(data = mound_data, aes(x = x, y = y), 
+                 fill = "tan", color = "brown", size = 0.5, inherit.aes = FALSE) +
+    # Add pitching rubber
+    geom_polygon(data = rubber_data, aes(x = x, y = y), 
+                 fill = "white", color = "black", size = 1, inherit.aes = FALSE) +
     # Add arm angle lines from central point to cluster centers
     geom_segment(data = avg_release_points, 
                  aes(x = line_start_x, y = line_start_y, 
@@ -297,10 +315,6 @@ create_trackman_report <- function(data, pitcher_name) {
                  size = 2, alpha = 0.8, inherit.aes = FALSE) +
     # Add the individual release points
     geom_point(alpha = 0.7, size = 2) +
-    # Add average release point markers
-    geom_point(data = avg_release_points, 
-               aes(x = avg_rel_side, y = avg_rel_height, color = PitchType),
-               size = 4, shape = 17, inherit.aes = FALSE) +  # Triangle markers
     theme_minimal() +
     labs(title = "Release Point", 
          subtitle = "Lines show arm angle paths from central point to each pitch cluster",
