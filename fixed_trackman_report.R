@@ -9,6 +9,11 @@ library(grid)     # For textGrob and gpar
 
 # Function to convert spin axis to clock face tilt
 spin_to_tilt <- function(spin_axis) {
+  # Handle NA values
+  if (any(is.na(spin_axis))) {
+    return(ifelse(is.na(spin_axis), NA, spin_to_tilt(spin_axis[!is.na(spin_axis)])))
+  }
+  
   # Baseball Savant spin_axis: 180° = pure backspin (12:00), 0° = pure topspin (6:00)
   # From catcher's perspective: higher degrees go left (toward 11), lower go right (toward 1)
   
@@ -21,20 +26,18 @@ spin_to_tilt <- function(spin_axis) {
   clock_decimal <- (normalized / 30 + 6) %% 12
   
   # Convert to 12-hour format
-  if (clock_decimal == 0) clock_decimal <- 12
-  if (clock_decimal > 12) clock_decimal <- clock_decimal - 12
+  clock_decimal <- ifelse(clock_decimal == 0, 12, clock_decimal)
+  clock_decimal <- ifelse(clock_decimal > 12, clock_decimal - 12, clock_decimal)
   
   # Convert decimal to hours:minutes
   hours <- floor(clock_decimal)
   minutes <- round((clock_decimal - hours) * 60)
   
   # Handle minute overflow
-  if (minutes >= 60) {
-    hours <- hours + 1
-    minutes <- 0
-  }
-  if (hours > 12) hours <- hours - 12
-  if (hours == 0) hours <- 12
+  minutes <- ifelse(minutes >= 60, 0, minutes)
+  hours <- ifelse(minutes == 0 & (clock_decimal - floor(clock_decimal)) * 60 >= 60, hours + 1, hours)
+  hours <- ifelse(hours > 12, hours - 12, hours)
+  hours <- ifelse(hours == 0, 12, hours)
   
   # Format as clock position
   sprintf("%d:%02d", hours, minutes)
