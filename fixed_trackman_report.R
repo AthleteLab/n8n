@@ -102,8 +102,18 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA,
       ArmAngle = if("arm_angle" %in% names(.)) arm_angle else NA,
       BatterHand = if("stand" %in% names(.)) stand else NA,
-      Result = if("events" %in% names(.) & "result" %in% names(.)) paste0(events, "-", result) else NA,
-      Count = if("balls" %in% names(.) & "strikes" %in% names(.)) paste0(balls, "-", strikes) else NA
+      # Combine events and description for result
+      Result = case_when(
+        !is.na(events) & events != "" ~ events,
+        !is.na(description) & description != "" ~ description,
+        TRUE ~ "Unknown"
+      ),
+      Count = if("balls" %in% names(.) & "strikes" %in% names(.)) paste0(balls, "-", strikes) else NA,
+      # Add fields needed for proper pitch numbering
+      Inning = if("inning" %in% names(.)) inning else NA,
+      InningTop = if("inning_topbot" %in% names(.)) inning_topbot else NA,
+      AtBatNumber = if("at_bat_number" %in% names(.)) at_bat_number else NA,
+      PitchNumber = if("pitch_number" %in% names(.)) pitch_number else NA
     ) %>%
     # Convert pitch names to abbreviations
     mutate(
@@ -152,48 +162,105 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     filename_date <- "Unknown_Date"
   }
   
-  # Helper function to create arsenal table
-  create_arsenal_table <- function(data, batter_filter = "all") {
-    if(batter_filter != "all") {
-      data <- data %>% filter(BatterHand == batter_filter)
-    }
-    
-    # Calculate metrics
-    arsenal_metrics <- data %>%
-      group_by(PitchType) %>%
-      summarise(
-        Count = n(),
-        `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
-        `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
-        `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
-        `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
-        `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
-        Extension = round(mean(Extension, na.rm = TRUE), 1),
-        `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
-        .groups = 'drop'
-      ) %>%
-      mutate(
-        `Usage%` = round((Count / sum(Count)) * 100, 1),
-        Tilt = spin_to_tilt(`Avg Spin Axis`),
-        Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
-      ) %>%
-      select(-`Avg Spin Axis`) %>%
-      select(PitchType, Count, `Usage%`, everything())
-    
-    return(tableGrob(arsenal_metrics, rows = NULL))
-  }
+     # Helper function to create arsenal table
+   create_arsenal_table <- function(data, batter_filter = "all") {
+     if(batter_filter != "all") {
+       data <- data %>% filter(BatterHand == batter_filter)
+     }
+     
+     # Add derived fields for calculations
+     data <- data %>%
+       mutate(
+         # Zone determination (simplified - assumes strike zone exists)
+         IsStrike = case_when(
+           grepl("strike|foul|called_strike", Result, ignore.case = TRUE) ~ TRUE,
+           grepl("ball", Result, ignore.case = TRUE) ~ FALSE,
+           TRUE ~ NA
+         ),
+         IsInZone = case_when(
+           !is.na(PlateLocSide) & !is.na(PlateLocHeight) ~ 
+             (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
+           TRUE ~ NA
+         ),
+         IsSwing = grepl("foul|hit_into_play|hit_by_pitch", Result, ignore.case = TRUE),
+         IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE)
+       )
+     
+     # Calculate metrics
+     arsenal_metrics <- data %>%
+       group_by(PitchType) %>%
+       summarise(
+         Count = n(),
+         `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
+         `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
+         `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
+         `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
+         `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
+         Extension = round(mean(Extension, na.rm = TRUE), 1),
+         `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
+         # Advanced metrics
+         `Strike%` = round(mean(IsStrike, na.rm = TRUE) * 100, 1),
+         `Zone%` = round(mean(IsInZone, na.rm = TRUE) * 100, 1),
+         `Whiff%` = round(sum(IsWhiff, na.rm = TRUE) / sum(IsSwing, na.rm = TRUE) * 100, 1),
+         `CSW%` = round((sum(IsStrike, na.rm = TRUE) + sum(IsWhiff, na.rm = TRUE)) / n() * 100, 1),
+         .groups = 'drop'
+       ) %>%
+       mutate(
+         `Usage%` = round((Count / sum(Count)) * 100, 1),
+         Tilt = spin_to_tilt(`Avg Spin Axis`),
+         Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
+       ) %>%
+       select(-`Avg Spin Axis`) %>%
+       select(PitchType, Count, `Usage%`, `Max Velo`, `Avg Velo`, `Spin Rate`, 
+              `Avg IVB`, `Avg HB`, Extension, Tilt, `Strike%`, `Zone%`, `Whiff%`, `CSW%`)
+     
+     return(tableGrob(arsenal_metrics, rows = NULL))
+   }
   
-  # Helper function to create summary stats table (placeholder - would need game-level data)
-  create_summary_stats_table <- function(data) {
-    # This would require game-level aggregation - simplified version
-    summary_stats <- data.frame(
-      Metric = c("Total Pitches", "Unique Games", "Avg Pitches/Game"),
-      Value = c(nrow(data), 
-                ifelse(!is.null(date_col), length(unique(data[[date_col]])), "N/A"),
-                ifelse(!is.null(date_col), round(nrow(data) / length(unique(data[[date_col]])), 1), "N/A"))
-    )
-    return(tableGrob(summary_stats, rows = NULL))
-  }
+     # Helper function to create summary stats table
+   create_summary_stats_table <- function(data) {
+     # Add derived fields for calculations
+     data <- data %>%
+       mutate(
+         IsStrike = case_when(
+           grepl("strike|foul|called_strike", Result, ignore.case = TRUE) ~ TRUE,
+           grepl("ball", Result, ignore.case = TRUE) ~ FALSE,
+           TRUE ~ NA
+         ),
+         IsInZone = case_when(
+           !is.na(PlateLocSide) & !is.na(PlateLocHeight) ~ 
+             (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
+           TRUE ~ NA
+         ),
+         IsSwing = grepl("foul|hit_into_play|hit_by_pitch", Result, ignore.case = TRUE),
+         IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE),
+         IsHit = grepl("single|double|triple|home_run|hit_into_play", Result, ignore.case = TRUE),
+         IsWalk = grepl("walk", Result, ignore.case = TRUE),
+         IsStrikeout = grepl("strikeout", Result, ignore.case = TRUE)
+       )
+     
+     # Calculate game-level stats (approximations)
+     total_pitches <- nrow(data)
+     unique_games <- ifelse(!is.null(date_col), length(unique(data[[date_col]])), 1)
+     
+     # Estimate innings pitched (very rough approximation)
+     estimated_outs <- sum(data$IsStrikeout, na.rm = TRUE) + 
+                      sum(grepl("field_out|force_out|grounded_into_double_play", data$Result, ignore.case = TRUE), na.rm = TRUE)
+     estimated_ip <- round(estimated_outs / 3, 1)
+     
+     summary_stats <- data.frame(
+       Metric = c("IP", "Total Pitches", "Strike%", "Zone%", "Whiff%", "CSW%"),
+       Value = c(
+         estimated_ip,
+         total_pitches,
+         paste0(round(mean(data$IsStrike, na.rm = TRUE) * 100, 1), "%"),
+         paste0(round(mean(data$IsInZone, na.rm = TRUE) * 100, 1), "%"),
+         paste0(round(sum(data$IsWhiff, na.rm = TRUE) / sum(data$IsSwing, na.rm = TRUE) * 100, 1), "%"),
+         paste0(round((sum(data$IsStrike, na.rm = TRUE) + sum(data$IsWhiff, na.rm = TRUE)) / total_pitches * 100, 1), "%")
+       )
+     )
+     return(tableGrob(summary_stats, rows = NULL))
+   }
   
   # PAGE 1 - SUMMARY OVERVIEW
   page1_arsenal <- create_arsenal_table(pitcher_data, "all")
@@ -236,23 +303,29 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     heights = c(0.5, 2, 4)
   )
   
-  # PAGE 4 - PITCH LOG
-  pitch_log <- pitcher_data %>%
-    mutate(
-      `Pitch #` = row_number(),
-      `PA #` = cumsum(!duplicated(paste(game_date, at_bat_number))),
-      `Pitch Type` = PitchType,
-      IVB = round(InducedVertBreak, 1),
-      HB = round(HorzBreak, 1),
-      `Spin Rate` = round(SpinRate, 0),
-      Tilt = spin_to_tilt(SpinAxis),
-      `Release Height` = round(RelHeight, 2),
-      `Release Side` = round(RelSide, 2),
-      Extension = round(Extension, 2)
-    ) %>%
-    select(`Pitch #`, `PA #`, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
-           `Release Height`, `Release Side`, Extension, Result) %>%
-    slice_head(n = 50)  # Limit for display
+     # PAGE 4 - PITCH LOG
+   pitch_log <- pitcher_data %>%
+     arrange(game_date, Inning, InningTop, AtBatNumber, PitchNumber) %>%
+     mutate(
+       # Create proper pitch numbering: Inning.PA.Pitch
+       InningPA = paste0(Inning, 
+                        ifelse(InningTop == "Top", "T", "B"), 
+                        ".", 
+                        AtBatNumber),
+       `Pitch #` = paste0(InningPA, ".", PitchNumber),
+       `PA #` = paste0(Inning, ifelse(InningTop == "Top", "T", "B"), ".", AtBatNumber),
+       `Pitch Type` = PitchType,
+       IVB = round(InducedVertBreak, 1),
+       HB = round(HorzBreak, 1),
+       `Spin Rate` = round(SpinRate, 0),
+       Tilt = spin_to_tilt(SpinAxis),
+       `Release Height` = round(RelHeight, 2),
+       `Release Side` = round(RelSide, 2),
+       Extension = round(Extension, 2)
+     ) %>%
+     select(`Pitch #`, `PA #`, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
+            `Release Height`, `Release Side`, Extension, Result) %>%
+     slice_head(n = 50)  # Limit for display
   
   page4_table <- tableGrob(pitch_log, rows = NULL)
   
