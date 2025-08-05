@@ -278,32 +278,62 @@ create_trackman_report <- function(data, pitcher_name) {
     label = c("12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")
   )
   
-  # Create tilt frequency data for bumpy edge
+  # Create tilt density data around the clock
   if ("SpinAxis" %in% names(pitcher_data)) {
-    # Create bins for spin axis (every 10 degrees)
-    tilt_freq <- pitcher_data %>%
+    # Create density polygons for each pitch type
+    tilt_density_data <- pitcher_data %>%
       filter(!is.na(SpinAxis)) %>%
       mutate(
         normalized_spin = (SpinAxis + 360) %% 360,
-        # Bin into 10-degree segments
-        spin_bin = round(normalized_spin / 10) * 10,
-        spin_bin = ifelse(spin_bin == 360, 0, spin_bin)
-      ) %>%
-      count(spin_bin, PitchType) %>%
-      mutate(
-        # Convert to clock position
-        clock_decimal = (spin_bin / 30 + 6) %% 12,
-        clock_decimal = ifelse(clock_decimal == 0, 12, clock_decimal),
-        # Convert to angle for positioning
-        clock_angle_deg = (clock_decimal - 3) * 30,
-        theta = clock_angle_deg * pi / 180,
-        # Create bumpy edge based on frequency
-        radius = 0.8 + (n / max(n)) * 0.3, # Base radius + frequency bump
-        x = radius * cos(-theta),
-        y = radius * sin(-theta)
+        # Convert to clock decimal for density calculation
+        clock_decimal = (normalized_spin / 30 + 6) %% 12,
+        clock_decimal = ifelse(clock_decimal == 0, 12, clock_decimal)
       )
+    
+    # Create density curves for each pitch type
+    tilt_polygons <- list()
+    
+    for(pitch in unique(tilt_density_data$PitchType)) {
+      pitch_data <- tilt_density_data %>% filter(PitchType == pitch)
+      
+      if(nrow(pitch_data) > 1) {
+        # Create circular density
+        dens <- density(pitch_data$clock_decimal, bw = 0.3, from = 0, to = 12, n = 100)
+        
+        # Extend density to wrap around (connect 12 to 0)
+        angles <- c(dens$x, dens$x[1] + 12) * 30 - 90  # Convert to degrees, offset for 12 at top
+        densities <- c(dens$y, dens$y[1])
+        
+        # Normalize density to reasonable size
+        max_dens <- max(densities)
+        densities <- densities / max_dens * 0.3  # Scale to max 0.3 units from clock edge
+        
+        # Create polygon points
+        inner_radius <- 0.8
+        outer_radius <- inner_radius + densities
+        
+        # Convert to x,y coordinates
+        theta_rad <- angles * pi / 180
+        
+        # Create polygon (inner edge + outer edge)
+        polygon_data <- data.frame(
+          x = c(inner_radius * cos(theta_rad), rev(outer_radius * cos(theta_rad))),
+          y = c(inner_radius * sin(theta_rad), rev(outer_radius * sin(theta_rad))),
+          PitchType = pitch
+        )
+        
+        tilt_polygons[[pitch]] <- polygon_data
+      }
+    }
+    
+    # Combine all polygons
+    if(length(tilt_polygons) > 0) {
+      tilt_density_polygons <- do.call(rbind, tilt_polygons)
+    } else {
+      tilt_density_polygons <- NULL
+    }
   } else {
-    tilt_freq <- NULL
+    tilt_density_polygons <- NULL
   }
   
   tilt_plot <- ggplot() +
@@ -317,14 +347,12 @@ create_trackman_report <- function(data, pitcher_name) {
                  color = "black", size = 0.5) +
     # Clock numbers inside
     geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 4, fontface = "bold") +
-    # Frequency bumps around the edge
+    # Density polygons around the edge
     {
-      if (!is.null(tilt_freq) && nrow(tilt_freq) > 0) {
-        geom_point(data = tilt_freq, aes(x = x, y = y, color = PitchType, size = n), alpha = 0.8)
+      if (!is.null(tilt_density_polygons) && nrow(tilt_density_polygons) > 0) {
+        geom_polygon(data = tilt_density_polygons, aes(x = x, y = y, fill = PitchType), alpha = 0.6)
       }
     } +
-    # Scale the size of frequency bumps
-    scale_size_continuous(range = c(2, 8), guide = "none") +
     coord_fixed(xlim = c(-1.2, 1.2), ylim = c(-1.2, 1.2)) +
     theme_void() +
     labs(title = "Tilt Consistency") +
