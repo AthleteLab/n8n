@@ -429,8 +429,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   # PAGE 4 - PITCH LOG (FIXED VERSION)
   # First, create proper PA identifiers and ensure correct chronological ordering
   pitch_log <- pitcher_data %>%
-    # Primary sort: by game date, game PK, inning, and through order
-    arrange(game_datetime, GamePK, Inning, ThroughOrder, PriorPA) %>%
+    # Primary sort: by game date, game PK, inning, outs, and through order
+    arrange(game_datetime, GamePK, Inning, Outs, ThroughOrder, PriorPA) %>%
     group_by(Pitcher) %>%
     mutate(
       # Create PA grouping identifier
