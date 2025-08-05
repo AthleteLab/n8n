@@ -261,10 +261,11 @@ create_trackman_report <- function(data, pitcher_name) {
     ) %>%
     filter(!is.na(avg_arm_angle)) %>%
     mutate(
-      # Calculate line endpoints from x-axis to cluster center
-      # Start at x-axis (y=0) at the same horizontal position as cluster center
-      line_start_x = avg_rel_side,
+      # Calculate line endpoints from center (x=0) using arm angle
+      # Start at center of mound (x=0, y=0)
+      line_start_x = 0,
       line_start_y = 0,
+      # Use arm angle to calculate end point at cluster center
       line_end_x = avg_rel_side,
       line_end_y = avg_rel_height
     )
