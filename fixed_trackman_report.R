@@ -130,9 +130,10 @@ create_trackman_report <- function(data, pitcher_name) {
     pitcher_data <- pitcher_data %>%
       mutate(
         HorzBreak = -HorzBreak,  # Flip horizontal break for lefties
-        ArmAngle = 180 - ArmAngle  # Flip arm angle for lefties (mirror across 90°)
+        ArmAngle = 180 - ArmAngle,  # Flip arm angle for lefties (mirror across 90°)
+        RelSide = -RelSide  # Flip release side for lefties
       )
-    print(paste("Detected left-handed pitcher:", pitcher_name, "- flipping horizontal break and arm angle values"))
+    print(paste("Detected left-handed pitcher:", pitcher_name, "- flipping horizontal break, arm angle, and release side values"))
   } else {
     print(paste("Detected right-handed pitcher:", pitcher_name))
   }
