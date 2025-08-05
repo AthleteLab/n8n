@@ -271,8 +271,26 @@ create_trackman_report <- function(data, pitcher_name) {
       line_end_y = avg_rel_height
     )
   
+    # Dynamic scaling for release plot
+  rel_side_range <- range(pitcher_data$RelSide, na.rm = TRUE)
+  rel_height_range <- range(pitcher_data$RelHeight, na.rm = TRUE)
+  
+  # Set x limits: default -2.5 to 2.5, expand to -4 to 4 if needed
+  if (rel_side_range[1] < -2.5 || rel_side_range[2] > 2.5) {
+    x_limits <- c(-4, 4)
+  } else {
+    x_limits <- c(-2.5, 2.5)
+  }
+  
+  # Set y limits: default 0 to 7.5, expand to 0 to 10 if needed
+  if (rel_height_range[2] > 7.5) {
+    y_limits <- c(0, 10)
+  } else {
+    y_limits <- c(0, 7.5)
+  }
+  
   release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
-    # Add arm angle lines from x-axis to cluster centers
+    # Add arm angle lines from central point to cluster centers
     geom_segment(data = avg_release_points, 
                  aes(x = line_start_x, y = line_start_y, 
                      xend = line_end_x, yend = line_end_y, color = PitchType),
@@ -284,11 +302,11 @@ create_trackman_report <- function(data, pitcher_name) {
                aes(x = avg_rel_side, y = avg_rel_height, color = PitchType),
                size = 4, shape = 17, inherit.aes = FALSE) +  # Triangle markers
     theme_minimal() +
-         labs(title = "Release Point", 
-          subtitle = "Lines show arm angle paths from central point to each pitch cluster",
+    labs(title = "Release Point", 
+         subtitle = "Lines show arm angle paths from central point to each pitch cluster",
          x = "Release Side (feet)", 
          y = "Release Height (feet)") +
-    coord_fixed(xlim = c(-3, 3), ylim = c(0, 8))
+    coord_fixed(xlim = x_limits, ylim = y_limits)
   
   # 4. Create velocity consistency plot
   velo_plot <- ggplot(pitcher_data, aes(x = RelSpeed, fill = PitchType)) +
