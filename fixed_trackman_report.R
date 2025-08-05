@@ -121,6 +121,18 @@ create_trackman_report <- function(data, pitcher_name) {
   pitcher_data <- pitcher_data %>%
     filter(!is.na(PitchType))
   
+  # Define consistent color scheme for pitch types
+  pitch_colors <- c(
+    "FF" = "black",
+    "SI" = "gray",
+    "CT" = "darkgreen", 
+    "CH" = "blue",
+    "SP" = "lightblue",
+    "SL" = "yellow",
+    "SW" = "orange",
+    "CB" = "red"
+  )
+  
   # Detect handedness and adjust horizontal break for lefties
   # For left-handed pitchers, flip the horizontal break sign
   # You can determine this from release position or add it manually
@@ -244,6 +256,7 @@ create_trackman_report <- function(data, pitcher_name) {
     geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType), 
                size = 4, stroke = 0, shape = 16, inherit.aes = FALSE) +
     coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
+    scale_color_manual(values = pitch_colors) +
     theme_minimal() +
     labs(title = "Pitch Movement", 
          subtitle = "Pitcher View",
@@ -317,6 +330,7 @@ create_trackman_report <- function(data, pitcher_name) {
                  size = 2, alpha = 0.8, inherit.aes = FALSE) +
     # Add the individual release points
     geom_point(alpha = 0.7, size = 2) +
+    scale_color_manual(values = pitch_colors) +
     theme_minimal() +
     labs(title = "Release Point", 
          subtitle = "Pitcher View",
@@ -328,6 +342,7 @@ create_trackman_report <- function(data, pitcher_name) {
   velo_plot <- ggplot(pitcher_data, aes(x = RelSpeed, fill = PitchType)) +
     geom_density(alpha = 0.6) +
     facet_grid(PitchType ~ .) +
+    scale_fill_manual(values = pitch_colors) +
     theme_minimal() +
     labs(title = "Velocity Consistency",
          x = "Release Speed (mph)",
@@ -449,6 +464,8 @@ create_trackman_report <- function(data, pitcher_name) {
         geom_polygon(data = tilt_density_polygons, aes(x = x, y = y, fill = PitchType), alpha = 0.6)
       }
     } +
+    scale_color_manual(values = pitch_colors) +
+    scale_fill_manual(values = pitch_colors) +
     coord_fixed(xlim = c(-1.2, 1.2), ylim = c(-1.2, 1.2)) +
     theme_void() +
     labs(title = "Tilt Consistency") +
@@ -497,12 +514,27 @@ create_trackman_report <- function(data, pitcher_name) {
   
   report_title <- paste(pitcher_name, "-", date_str)
   
+  # Create colored table with pitch type colors
+  colored_table <- tableGrob(pitch_metrics)
+  
+  # Color the PitchType column based on pitch colors
+  pitch_type_col <- which(colnames(pitch_metrics) == "PitchType")
+  if(length(pitch_type_col) > 0) {
+    for(i in 1:nrow(pitch_metrics)) {
+      pitch_type <- pitch_metrics$PitchType[i]
+      if(pitch_type %in% names(pitch_colors)) {
+        colored_table$grobs[[i + ncol(pitch_metrics)]]$gp$col <- pitch_colors[pitch_type]
+        colored_table$grobs[[i + ncol(pitch_metrics)]]$gp$fontface <- "bold"
+      }
+    }
+  }
+  
   # NEW LAYOUT: Name, Table, Movement|Release, Clock|Velocity, Heatmaps
   final_plot <- grid.arrange(
     # Row 1: Title/Name
     textGrob(report_title, gp = gpar(fontsize = 20, fontface = "bold")),
     # Row 2: Table
-    tableGrob(pitch_metrics),
+    colored_table,
     # Row 3: Movement Plot | Release Plot
     arrangeGrob(movement_plot, release_plot, ncol = 2),
     # Row 4: Clock | Velocity Consistency
