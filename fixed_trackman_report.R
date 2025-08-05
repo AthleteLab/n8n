@@ -76,15 +76,20 @@ create_trackman_report <- function(data, pitcher_name) {
     group_by(AutoPitchType) %>%
     summarise(
       Count = n(),
-      `Max Velo` = max(RelSpeed, na.rm = TRUE),
-      `Avg Velo` = mean(RelSpeed, na.rm = TRUE),
-      `Spin Rate` = mean(SpinRate, na.rm = TRUE),
-      `Max IVB` = max(InducedVertBreak, na.rm = TRUE),
-      `Max HB` = max(HorzBreak, na.rm = TRUE),
-      `Avg IVB` = mean(InducedVertBreak, na.rm = TRUE),
-      `Avg HB` = mean(HorzBreak, na.rm = TRUE),
+      `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
+      `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
+      `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
+      `Max IVB` = round(max(InducedVertBreak, na.rm = TRUE), 1),
+      `Max HB` = round(max(HorzBreak, na.rm = TRUE), 1),
+      `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
+      `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
       Tilt = spin_to_tilt(mean(SpinAxis, na.rm = TRUE)),
-      Extension = mean(Extension, na.rm = TRUE)
+      Extension = round(mean(Extension, na.rm = TRUE), 1)
+    ) %>%
+    # Replace NA values in Spin Rate with 0 and fix Tilt formatting
+    mutate(
+      `Spin Rate` = ifelse(is.na(`Spin Rate`), 0, `Spin Rate`),
+      Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
     )
   
   # 2. Create velocity consistency plot
