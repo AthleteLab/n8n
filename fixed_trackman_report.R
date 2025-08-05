@@ -262,15 +262,13 @@ create_trackman_report <- function(data, pitcher_name) {
     ) %>%
     filter(!is.na(avg_arm_angle)) %>%
     mutate(
-      # Calculate arm angle line from cluster center extending 2 feet toward home plate
-      # Start at cluster center
-      line_start_x = avg_rel_side,
-      line_start_y = avg_rel_height,
-      # Arm angle points toward home plate (downward trajectory)
-      # Convert to radians and flip both x and y components
-      angle_rad = (270 - avg_arm_angle) * pi / 180,  # 270° - arm_angle to point downward
-      line_end_x = avg_rel_side - 2 * cos(angle_rad),  # Flip x direction
-      line_end_y = avg_rel_height - 2 * sin(angle_rad)  # Flip y direction
+      # Calculate arm angle lines from central point to each pitch cluster
+      # All lines start from the same central point (0, 4)
+      line_start_x = 0,
+      line_start_y = 4,
+      # Lines extend to each pitch cluster center (showing arm angle trajectory)
+      line_end_x = avg_rel_side,
+      line_end_y = avg_rel_height
     )
   
   release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
@@ -286,8 +284,8 @@ create_trackman_report <- function(data, pitcher_name) {
                aes(x = avg_rel_side, y = avg_rel_height, color = PitchType),
                size = 4, shape = 17, inherit.aes = FALSE) +  # Triangle markers
     theme_minimal() +
-    labs(title = "Release Point", 
-         subtitle = "Lines show avg arm angle path to cluster center",
+         labs(title = "Release Point", 
+          subtitle = "Lines show arm angle paths from central point to each pitch cluster",
          x = "Release Side (feet)", 
          y = "Release Height (feet)") +
     coord_fixed(xlim = c(-3, 3), ylim = c(0, 8))
