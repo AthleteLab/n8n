@@ -248,17 +248,7 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Pitch Movements", 
          subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", primary_fastball, " avg arm angle (", round(avg_arm_angle, 1), "°). Large dots = avg movement") else "Large dots = avg movement")
   
-  # 5. Create pitch usage pie chart
-  usage_plot <- pitcher_data %>%
-    count(PitchType) %>%
-    mutate(pct = n/sum(n)) %>%
-    ggplot(aes(x = "", y = pct, fill = PitchType)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    theme_void() +
-    labs(title = "Pitch Usage %")
-  
-  # 6. Create release points plot
+  # 5. Create release points plot
   release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
     geom_point() +
     theme_minimal() +
@@ -419,7 +409,7 @@ create_trackman_report <- function(data, pitcher_name) {
     tableGrob(pitch_metrics),
     velo_plot,
     arrangeGrob(location_plot, movement_plot, ncol = 2),
-    arrangeGrob(usage_plot, release_plot, tilt_plot, ncol = 3),
+    arrangeGrob(release_plot, tilt_plot, ncol = 2),
     heights = c(2, 2, 3, 3),
     top = textGrob(report_title, gp = gpar(fontsize = 20, fontface = "bold"))
   )
