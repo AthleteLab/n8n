@@ -202,7 +202,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
          `Strike%` = round(mean(IsStrike, na.rm = TRUE) * 100, 1),
          `Zone%` = round(mean(IsInZone, na.rm = TRUE) * 100, 1),
          `Whiff%` = round(sum(IsWhiff, na.rm = TRUE) / sum(IsSwing, na.rm = TRUE) * 100, 1),
-         `CSW%` = round((sum(IsStrike, na.rm = TRUE) + sum(IsWhiff, na.rm = TRUE)) / n() * 100, 1),
+         `CSW%` = round((sum(IsCalledStrike, na.rm = TRUE) + sum(IsWhiff, na.rm = TRUE)) / n() * 100, 1),
          .groups = 'drop'
        ) %>%
        mutate(
@@ -232,8 +232,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
               (abs(PlateLocSide) <= 0.83 & PlateLocHeight >= 1.5 & PlateLocHeight <= 3.5),
             TRUE ~ NA
           ),
-          IsSwing = grepl("foul|hit_into_play|swinging_strike", Result, ignore.case = TRUE),
-          IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE),
+                     IsSwing = grepl("foul|hit_into_play|swinging_strike", Result, ignore.case = TRUE),
+           IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE),
+           IsCalledStrike = grepl("called_strike", Result, ignore.case = TRUE),
           IsHit = grepl("single|double|triple|home_run|hit_into_play", Result, ignore.case = TRUE),
           IsWalk = grepl("walk", Result, ignore.case = TRUE),
           IsStrikeout = grepl("strikeout", Result, ignore.case = TRUE),
@@ -271,21 +272,23 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       woba_denominator <- total_at_bats + total_walks
       woba_against <- round(woba_numerator / woba_denominator, 3)
       
-      summary_stats <- data.frame(
-        Metric = c("IP", "R", "H", "K", "BB", "WHIP", "Strike%", "Zone%", "Whiff%", "CSW%"),
-        Value = c(
-          estimated_ip,
-          estimated_runs,
-          total_hits,
-          total_strikeouts,
-          total_walks,
-          whip,
-          paste0(round(mean(data$IsStrike, na.rm = TRUE) * 100, 1), "%"),
-          paste0(round(mean(data$IsInZone, na.rm = TRUE) * 100, 1), "%"),
-          paste0(round(sum(data$IsWhiff, na.rm = TRUE) / sum(data$IsSwing, na.rm = TRUE) * 100, 1), "%"),
-          paste0(round((sum(data$IsStrike, na.rm = TRUE) + sum(data$IsWhiff, na.rm = TRUE)) / nrow(data) * 100, 1), "%")
-        )
-      )
+             # Calculate CSW correctly: (Called Strikes + Swinging Strikes) / Total Pitches
+       total_called_strikes <- sum(data$IsCalledStrike, na.rm = TRUE)
+       total_whiffs <- sum(data$IsWhiff, na.rm = TRUE)
+       csw_rate <- round((total_called_strikes + total_whiffs) / nrow(data) * 100, 1)
+       
+       summary_stats <- data.frame(
+         IP = estimated_ip,
+         R = estimated_runs,
+         H = total_hits,
+         K = total_strikeouts,
+         BB = total_walks,
+         WHIP = whip,
+         `Strike%` = paste0(round(mean(data$IsStrike, na.rm = TRUE) * 100, 1), "%"),
+         `Zone%` = paste0(round(mean(data$IsInZone, na.rm = TRUE) * 100, 1), "%"),
+         `Whiff%` = paste0(round(sum(data$IsWhiff, na.rm = TRUE) / sum(data$IsSwing, na.rm = TRUE) * 100, 1), "%"),
+         `CSW%` = paste0(csw_rate, "%")
+       )
      return(tableGrob(summary_stats, rows = NULL))
    }
   
