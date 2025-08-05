@@ -213,8 +213,8 @@ create_trackman_report <- function(data, pitcher_name) {
         line_length <- 25  # Extend to edge of plot
         x_end <- line_length * cos(angle_rad)
         y_end <- line_length * sin(angle_rad)
-        geom_segment(aes(x = 0, y = 0, xend = x_end, yend = y_end), 
-                     color = "red", size = 1, alpha = 0.7, inherit.aes = FALSE)
+        annotate("segment", x = 0, y = 0, xend = x_end, yend = y_end, 
+                 color = "red", size = 1, alpha = 0.7)
       }
     } +
     # Add the individual pitch points
@@ -379,7 +379,7 @@ create_trackman_report <- function(data, pitcher_name) {
     geom_density_2d_filled(alpha = 0.7) +
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black", size = 1) +
-    facet_wrap(~ PitchType, scales = "free") +
+    facet_wrap(~ PitchType) +
     coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
     theme_minimal() +
     labs(title = "Location Heatmaps by Pitch Type",
