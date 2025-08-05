@@ -244,7 +244,7 @@ create_trackman_report <- function(data, pitcher_name) {
   
   # Numbers inside the clock face - 12 at top, going clockwise
   clock_angles <- seq(0, 2*pi, length.out = 13)[-13]  # 12 positions
-  clock_angles <- clock_angles + pi/2  # Rotate so 12 is at top (add 90 degrees)
+  clock_angles <- -clock_angles + pi/2  # Rotate so 12 is at top and reverse direction for clockwise
   
   clock_labels <- data.frame(
     x = 0.65 * cos(clock_angles),
