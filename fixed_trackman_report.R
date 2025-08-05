@@ -68,7 +68,8 @@ create_trackman_report <- function(data, pitcher_name) {
       PlateLocSide = if("plate_x" %in% names(.)) plate_x else NA,
       PlateLocHeight = if("plate_z" %in% names(.)) plate_z else NA,
       RelSide = if("release_pos_x" %in% names(.)) release_pos_x else NA,
-      RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA
+      RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA,
+      ArmAngle = if("arm_angle" %in% names(.)) arm_angle else NA
     ) %>%
     # Convert pitch names to abbreviations
     mutate(
@@ -146,11 +147,52 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Pitch Locations")
   
   # 4. Create pitch movement plot
+  # Get the most used pitch type and its average arm angle
+  most_used_pitch <- pitch_metrics %>%
+    arrange(desc(`Usage%`)) %>%
+    slice(1) %>%
+    pull(PitchType)
+  
+  avg_arm_angle <- pitcher_data %>%
+    filter(PitchType == most_used_pitch) %>%
+    summarise(avg_angle = mean(ArmAngle, na.rm = TRUE)) %>%
+    pull(avg_angle)
+  
+  # Create tick mark data for every 10 inches
+  tick_marks <- data.frame(
+    x_ticks = rep(seq(-20, 20, 10), each = 2),
+    y_ticks = rep(c(-1, 1), times = 5),
+    y_ticks_x = rep(seq(-20, 20, 10), each = 2),
+    x_ticks_y = rep(c(-1, 1), times = 5)
+  )
+  
   movement_plot <- ggplot(pitcher_data, aes(x = HorzBreak, y = InducedVertBreak, color = PitchType)) +
+    # Add intercept lines
+    geom_hline(yintercept = 0, color = "black", size = 0.5) +
+    geom_vline(xintercept = 0, color = "black", size = 0.5) +
+    # Add tick marks every 10 inches
+    geom_segment(data = tick_marks, aes(x = x_ticks, xend = x_ticks, y = y_ticks, yend = -y_ticks), 
+                 color = "black", size = 0.3, inherit.aes = FALSE) +
+    geom_segment(data = tick_marks, aes(x = x_ticks_y, xend = -x_ticks_y, y = y_ticks_x, yend = y_ticks_x), 
+                 color = "black", size = 0.3, inherit.aes = FALSE) +
+    # Add arm angle line if available
+    {
+      if (!is.na(avg_arm_angle)) {
+        # Convert arm angle to radians and create line endpoints
+        angle_rad <- avg_arm_angle * pi / 180
+        line_length <- 25  # Extend to edge of plot
+        x_end <- line_length * cos(angle_rad)
+        y_end <- line_length * sin(angle_rad)
+        geom_segment(aes(x = 0, y = 0, xend = x_end, yend = y_end), 
+                     color = "red", size = 1, alpha = 0.7, inherit.aes = FALSE)
+      }
+    } +
+    # Add the pitch points
     geom_point() +
     coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
     theme_minimal() +
-    labs(title = "Pitch Movements")
+    labs(title = "Pitch Movements", 
+         subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", most_used_pitch, " avg arm angle (", round(avg_arm_angle, 1), "°)") else "")
   
   # 5. Create pitch usage pie chart
   usage_plot <- pitcher_data %>%
