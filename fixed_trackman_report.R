@@ -137,10 +137,14 @@ create_trackman_report <- function(data, pitcher_name) {
           `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
           `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
           `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
-          Tilt = spin_to_tilt(mean(SpinAxis, na.rm = TRUE)),
+          `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
           Extension = round(mean(Extension, na.rm = TRUE), 1),
           .groups = 'drop'
-        ),
+        ) %>%
+        mutate(
+          Tilt = spin_to_tilt(`Avg Spin Axis`)
+        ) %>%
+        select(-`Avg Spin Axis`),
       by = "PitchType"
     ) %>%
     # Fix Tilt formatting and handle spin rate issues
