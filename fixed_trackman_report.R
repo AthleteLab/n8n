@@ -514,24 +514,8 @@ create_trackman_report <- function(data, pitcher_name) {
   
   report_title <- paste(pitcher_name, "-", date_str)
   
-  # Create table with colored background fills for PitchType column values only
+  # Use normal table without any coloring attempts
   colored_table <- tableGrob(pitch_metrics)
-  
-  # Add background fill colors to ONLY the PitchType column values (not header, not other columns)
-  for(i in 1:nrow(pitch_metrics)) {
-    pitch_type <- pitch_metrics$PitchType[i]
-    if(pitch_type %in% names(pitch_colors)) {
-      # Find the exact grob for the PitchType value in row i
-      # tableGrob structure: header row + data rows, left to right by column
-      row_start <- (i - 1) * ncol(pitch_metrics) + ncol(pitch_metrics) + 1  # Skip header
-      pitch_type_grob_index <- row_start  # PitchType is first column
-      
-      if(pitch_type_grob_index <= length(colored_table$grobs)) {
-        # Set background fill color for just this PitchType cell
-        colored_table$grobs[[pitch_type_grob_index]]$gp$fill <- pitch_colors[pitch_type]
-      }
-    }
-  }
   
   # NEW LAYOUT: Name, Table, Movement|Release, Clock|Velocity, Heatmaps
   final_plot <- grid.arrange(
