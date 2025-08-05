@@ -268,7 +268,7 @@ create_trackman_report <- function(data, pitcher_name) {
       line_start_y = avg_rel_height,
       # Arm angle points toward home plate (downward trajectory)
       # Convert to radians and adjust for downward direction
-      angle_rad = (avg_arm_angle - 90) * pi / 180,  # Subtract 90° to point downward
+      angle_rad = (270 - avg_arm_angle) * pi / 180,  # 270° - arm_angle to point downward
       line_end_x = avg_rel_side + 2 * cos(angle_rad),
       line_end_y = avg_rel_height + 2 * sin(angle_rad)
     )
