@@ -1,0 +1,208 @@
+# Load required libraries
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(scales)    # For color scales
+library(cowplot)  # For plot composition
+library(grid)     # For textGrob and gpar
+
+# Function to convert spin axis to clock face tilt
+spin_to_tilt <- function(spin_axis) {
+  # Convert spin axis to clock position (180° at top, clockwise)
+  
+  # First normalize to 0-360 range
+  normalized <- (spin_axis + 360) %% 360
+  
+  # Convert to clock position (180° = 12 o'clock, clockwise)
+  clock <- ((-normalized + 180 + 360) %% 360) / 30
+  
+  # Format as clock position
+  sprintf("%d:%02d", floor(clock), round((clock %% 1) * 60))
+}
+
+# Function to create circle points
+create_circle <- function(center = c(0,0), radius = 1, npoints = 100) {
+  angles <- seq(0, 2*pi, length.out = npoints)
+  
+  data.frame(
+    x = center[1] + radius * cos(angles),
+    y = center[2] + radius * sin(angles)
+  )
+}
+
+# Set working directory
+setwd("C:/Users/cmurr/OneDrive/Desktop/Athlete Lab Showcase Reports")
+
+# Read the data and print structure
+data <- read.csv("statcast.csv")
+
+print("Column names in the data:")
+print(names(data))
+
+print("\nAvailable pitchers:")
+print(unique(data$player_name))
+
+create_trackman_report <- function(data, pitcher_name) {
+  
+  # Filter data for the specified pitcher using player_name instead of Pitcher
+  pitcher_data <- data %>%
+    filter(player_name == pitcher_name)
+  
+  # Map Baseball Savant column names to your expected names
+  # You'll need to adjust these based on what columns are actually in your data
+  pitcher_data <- pitcher_data %>%
+    mutate(
+      # Map Baseball Savant names to your code's expected names
+      AutoPitchType = if("pitch_name" %in% names(.)) pitch_name else if("pitch_type" %in% names(.)) pitch_type else NA,
+      RelSpeed = if("release_speed" %in% names(.)) release_speed else NA,
+      SpinRate = if("release_spin" %in% names(.)) release_spin else NA,
+      InducedVertBreak = if("pfx_z" %in% names(.)) pfx_z * 12 else NA,  # Convert feet to inches
+      HorzBreak = if("pfx_x" %in% names(.)) pfx_x * 12 else NA,  # Convert feet to inches
+      SpinAxis = if("spin_axis" %in% names(.)) spin_axis else NA,
+      Extension = if("release_extension" %in% names(.)) release_extension else NA,
+      PlateLocSide = if("plate_x" %in% names(.)) plate_x else NA,
+      PlateLocHeight = if("plate_z" %in% names(.)) plate_z else NA,
+      RelSide = if("release_pos_x" %in% names(.)) release_pos_x else NA,
+      RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA
+    )
+  
+  # Remove rows where AutoPitchType is NA
+  pitcher_data <- pitcher_data %>%
+    filter(!is.na(AutoPitchType))
+  
+  # 1. Create pitch metrics summary table
+  pitch_metrics <- pitcher_data %>%
+    group_by(AutoPitchType) %>%
+    summarise(
+      Count = n(),
+      `Max Velo` = max(RelSpeed, na.rm = TRUE),
+      `Avg Velo` = mean(RelSpeed, na.rm = TRUE),
+      `Spin Rate` = mean(SpinRate, na.rm = TRUE),
+      `Max IVB` = max(InducedVertBreak, na.rm = TRUE),
+      `Max HB` = max(HorzBreak, na.rm = TRUE),
+      `Avg IVB` = mean(InducedVertBreak, na.rm = TRUE),
+      `Avg HB` = mean(HorzBreak, na.rm = TRUE),
+      Tilt = spin_to_tilt(mean(SpinAxis, na.rm = TRUE)),
+      Extension = mean(Extension, na.rm = TRUE)
+    )
+  
+  # 2. Create velocity consistency plot
+  velo_plot <- ggplot(pitcher_data, aes(x = RelSpeed, fill = AutoPitchType)) +
+    geom_density(alpha = 0.6) +
+    facet_grid(AutoPitchType ~ .) +
+    theme_minimal() +
+    labs(title = "Velocity Consistency") +
+    theme(legend.position = "none")
+  
+  # 3. Create pitch locations plot
+  location_plot <- ggplot(pitcher_data, aes(x = PlateLocSide, y = PlateLocHeight, color = AutoPitchType)) +
+    geom_point() +
+    geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
+              fill = NA, color = "black") +
+    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
+    theme_minimal() +
+    labs(title = "Pitch Locations")
+  
+  # 4. Create pitch movement plot
+  movement_plot <- ggplot(pitcher_data, aes(x = HorzBreak, y = InducedVertBreak, color = AutoPitchType)) +
+    geom_point() +
+    coord_fixed() +
+    theme_minimal() +
+    labs(title = "Pitch Movements")
+  
+  # 5. Create pitch usage pie chart
+  usage_plot <- pitcher_data %>%
+    count(AutoPitchType) %>%
+    mutate(pct = n/sum(n)) %>%
+    ggplot(aes(x = "", y = pct, fill = AutoPitchType)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y", start = 0) +
+    theme_void() +
+    labs(title = "Pitch Usage %")
+  
+  # 6. Create release points plot
+  release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = AutoPitchType)) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Pitch Release Points")
+  
+  # 7. Create tilt consistency plot using base ggplot2
+  circle_df <- create_circle()
+  
+  clock_labels <- data.frame(
+    x = 1.1 * cos(seq(0, 2*pi, length.out = 13)[-13]),
+    y = 1.1 * sin(seq(0, 2*pi, length.out = 13)[-13]),
+    label = c("6", "5", "4", "3", "2", "1", "12", "11", "10", "9", "8", "7")
+  )
+  
+  # Create tilt points from spin axis
+  if ("SpinAxis" %in% names(pitcher_data)) {
+    tilt_points <- pitcher_data %>%
+      filter(!is.na(SpinAxis)) %>%
+      mutate(
+        angle = (SpinAxis + 360) %% 360, # normalize
+        theta = (pi/180) * (-angle + 90), # convert to radians, 0 at top, clockwise
+        x = cos(theta),
+        y = sin(theta)
+      )
+  } else {
+    tilt_points <- NULL
+  }
+  
+  tilt_plot <- ggplot() +
+    geom_path(data = circle_df, aes(x = x, y = y), color = "black") +
+    geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 5) +
+    {
+      if (!is.null(tilt_points) && nrow(tilt_points) > 0) {
+        geom_point(data = tilt_points, aes(x = x, y = y, color = AutoPitchType), size = 3, alpha = 0.7)
+      }
+    } +
+    coord_fixed() +
+    theme_void() +
+    labs(title = "Tilt Consistency") +
+    theme(plot.title = element_text(hjust = 0.5, size = 16),
+          plot.margin = margin(10, 10, 10, 10))
+  
+  # Get date range for the pitcher
+  date_col <- NULL
+  if ("game_date" %in% names(pitcher_data)) {
+    date_col <- "game_date"
+  } else if ("Date" %in% names(pitcher_data)) {
+    date_col <- "Date"
+  } else if ("GameDate" %in% names(pitcher_data)) {
+    date_col <- "GameDate"
+  }
+  
+  if (!is.null(date_col)) {
+    min_date <- min(as.Date(pitcher_data[[date_col]], format = "%Y-%m-%d"), na.rm = TRUE)
+    max_date <- max(as.Date(pitcher_data[[date_col]], format = "%Y-%m-%d"), na.rm = TRUE)
+    
+    if (min_date == max_date) {
+      date_str <- format(min_date, "%y-%m-%d")
+    } else {
+      date_str <- paste(format(min_date, "%y-%m-%d"), "to", format(max_date, "%y-%m-%d"))
+    }
+  } else {
+    date_str <- "(Date Unknown)"
+  }
+  
+  report_title <- paste(pitcher_name, "-", date_str)
+  
+  # Combine all plots using gridExtra
+  final_plot <- grid.arrange(
+    tableGrob(pitch_metrics),
+    velo_plot,
+    arrangeGrob(location_plot, movement_plot, ncol = 2),
+    arrangeGrob(usage_plot, release_plot, tilt_plot, ncol = 3),
+    heights = c(2, 2, 3, 3),
+    top = textGrob(report_title, gp = gpar(fontsize = 20, fontface = "bold"))
+  )
+  
+  # Save the plot
+  filename <- paste0(gsub("[, ]", "_", pitcher_name), ".png")
+  ggsave(filename, final_plot, width = 12, height = 16)
+}
+
+# Example usage
+create_trackman_report(data, "Skubal, Tarik")
