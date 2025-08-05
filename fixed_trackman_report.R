@@ -121,6 +121,19 @@ create_trackman_report <- function(data, pitcher_name) {
   pitcher_data <- pitcher_data %>%
     filter(!is.na(PitchType))
   
+  # Detect handedness and adjust horizontal break for lefties
+  # For left-handed pitchers, flip the horizontal break sign
+  # You can determine this from release position or add it manually
+  is_lefty <- mean(pitcher_data$RelSide, na.rm = TRUE) > 0  # Lefties typically release from positive x
+  
+  if(is_lefty) {
+    pitcher_data <- pitcher_data %>%
+      mutate(HorzBreak = -HorzBreak)  # Flip horizontal break for lefties
+    print(paste("Detected left-handed pitcher:", pitcher_name, "- flipping horizontal break values"))
+  } else {
+    print(paste("Detected right-handed pitcher:", pitcher_name))
+  }
+  
   # 1. Create pitch metrics summary table
   pitch_metrics <- pitcher_data %>%
     group_by(PitchType) %>%
@@ -240,7 +253,7 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Release Point", 
          x = "Release Side (feet)", 
          y = "Release Height (feet)") +
-    coord_fixed()
+    coord_fixed(xlim = c(-3, 3), ylim = c(0, 8))
   
   # 4. Create velocity consistency plot
   velo_plot <- ggplot(pitcher_data, aes(x = RelSpeed, fill = PitchType)) +
