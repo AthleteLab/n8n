@@ -183,7 +183,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
             TRUE ~ NA
           ),
           IsSwing = grepl("foul|hit_into_play|swinging_strike", Result, ignore.case = TRUE),
-          IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE)
+          IsWhiff = grepl("swinging_strike", Result, ignore.case = TRUE),
+          IsCalledStrike = grepl("called_strike", Result, ignore.case = TRUE)
         )
      
      # Calculate metrics
