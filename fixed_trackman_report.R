@@ -503,16 +503,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     arrange(game_datetime, GamePK, Inning, Outs, ThroughOrder, PriorPA) %>%
     group_by(Pitcher) %>%
     mutate(
-      # Create PA grouping identifier
-      PA_Group = paste(GamePK, Batter, sep = "_"),
-      # Create change indicator for new PA
-      New_PA = c(TRUE, PA_Group[-1] != PA_Group[-length(PA_Group)])
+      # Identify PA-ending outcomes (remove markdown formatting for comparison)
+      PA_Ending_Result = grepl("\\*\\*(In Play, Out\\(s\\)|Walk|Strikeout|Single|Double|Triple|Home Run|Hit By Pitch|Error|Sac Bunt, Out|Sac Fly, Out|Fielders Choice|Truncated PA|Catcher Interference)\\*\\*", Result),
+      # Create PA number based on cumulative count of PA-ending results
+      `PA #` = cumsum(c(1, PA_Ending_Result[-length(PA_Ending_Result)] == TRUE)) 
     ) %>%
     ungroup() %>%
-    mutate(
-      # Assign PA numbers sequentially
-      `PA #` = cumsum(New_PA)
-    ) %>%
     # CRITICAL FIX: Sort within each PA by count progression (balls ascending, then strikes ascending)
     # This ensures 0-0 comes first, then 1-0, 2-0, 3-0, then 0-1, 1-1, 2-1, 3-1, then 0-2, 1-2, 2-2, 3-2
     group_by(`PA #`) %>%
