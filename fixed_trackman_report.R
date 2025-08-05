@@ -10,19 +10,19 @@ library(grid)     # For textGrob and gpar
 # Function to convert spin axis to clock face tilt
 spin_to_tilt <- function(spin_axis) {
   # Baseball Savant spin_axis: 180° = pure backspin (12:00), 0° = pure topspin (6:00)
-  # Need to convert to clock face where 180° = 12:00
+  # From catcher's perspective: higher degrees go left (toward 11), lower go right (toward 1)
   
   # First normalize to 0-360 range
   normalized <- (spin_axis + 360) %% 360
   
-  # Convert spin axis directly to clock hours
-  # 180° = 12:00, so we subtract from 180 and divide by 15 (360°/24 positions)
-  # But we want 12-hour clock, so divide by 30 (360°/12 positions)
-  clock_decimal <- (180 - normalized) / 30
+  # Convert spin axis to clock hours
+  # 180° = 12:00 (6 hours), so we need: (spin_axis/30) + 6
+  # But wrap around 12-hour clock
+  clock_decimal <- (normalized / 30 + 6) %% 12
   
-  # Normalize to 0-12 range
-  clock_decimal <- (clock_decimal + 12) %% 12
+  # Convert to 12-hour format
   if (clock_decimal == 0) clock_decimal <- 12
+  if (clock_decimal > 12) clock_decimal <- clock_decimal - 12
   
   # Convert decimal to hours:minutes
   hours <- floor(clock_decimal)
@@ -278,11 +278,10 @@ create_trackman_report <- function(data, pitcher_name) {
       mutate(
         # Convert spin axis to clock position (same logic as spin_to_tilt function)
         normalized_spin = (SpinAxis + 360) %% 360,
-        # Convert to clock angle: 180° = 12:00 (top), going clockwise
-        clock_angle_deg = (180 - normalized_spin + 360) %% 360,
-        # Convert to radians with 0 at top, going clockwise
-        theta = (clock_angle_deg * pi / 180) - pi/2,
-        x = 0.95 * cos(-theta), # Negative for clockwise direction
+        # Convert directly: spin_axis degrees to clock position
+        # 180° = 12:00 (top), 0° = 6:00 (bottom)
+        theta = (normalized_spin * pi / 180) - pi/2, # Convert to radians, adjust so 180° is at top
+        x = 0.95 * cos(-theta), # Negative for clockwise direction to match clock
         y = 0.95 * sin(-theta)
       )
   } else {
