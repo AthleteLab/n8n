@@ -56,7 +56,11 @@ create_trackman_report <- function(data, pitcher_name) {
       # Map Baseball Savant names to your code's expected names
       AutoPitchType = if("pitch_name" %in% names(.)) pitch_name else if("pitch_type" %in% names(.)) pitch_type else NA,
       RelSpeed = if("release_speed" %in% names(.)) release_speed else NA,
-      SpinRate = if("release_spin" %in% names(.)) release_spin else NA,
+      # Try multiple possible spin rate column names
+      SpinRate = if("release_spin" %in% names(.)) release_spin 
+                 else if("spin_rate" %in% names(.)) spin_rate 
+                 else if("spin_rate_deprecated" %in% names(.)) spin_rate_deprecated 
+                 else NA,
       InducedVertBreak = if("pfx_z" %in% names(.)) pfx_z * 12 else NA,  # Convert feet to inches
       HorzBreak = if("pfx_x" %in% names(.)) pfx_x * 12 else NA,  # Convert feet to inches
       SpinAxis = if("spin_axis" %in% names(.)) spin_axis else NA,
@@ -66,6 +70,13 @@ create_trackman_report <- function(data, pitcher_name) {
       RelSide = if("release_pos_x" %in% names(.)) release_pos_x else NA,
       RelHeight = if("release_pos_z" %in% names(.)) release_pos_z else NA
     )
+  
+  # Debug: Check what spin rate values we actually have
+  print("Spin Rate column check:")
+  print(paste("Has release_spin:", "release_spin" %in% names(data)))
+  print(paste("Has spin_rate:", "spin_rate" %in% names(data)))
+  print(paste("SpinRate values summary:"))
+  print(summary(pitcher_data$SpinRate))
   
   # Remove rows where AutoPitchType is NA
   pitcher_data <- pitcher_data %>%
@@ -79,16 +90,15 @@ create_trackman_report <- function(data, pitcher_name) {
       `Max Velo` = round(max(RelSpeed, na.rm = TRUE), 1),
       `Avg Velo` = round(mean(RelSpeed, na.rm = TRUE), 1),
       `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
-      `Max IVB` = round(max(InducedVertBreak, na.rm = TRUE), 1),
-      `Max HB` = round(max(HorzBreak, na.rm = TRUE), 1),
       `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
       `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
       Tilt = spin_to_tilt(mean(SpinAxis, na.rm = TRUE)),
       Extension = round(mean(Extension, na.rm = TRUE), 1)
     ) %>%
-    # Replace NA values in Spin Rate with 0 and fix Tilt formatting
+    # Fix Tilt formatting and handle spin rate issues
     mutate(
-      `Spin Rate` = ifelse(is.na(`Spin Rate`), 0, `Spin Rate`),
+      # Don't replace spin rate with 0 - let's see what the actual values are
+      `Spin Rate` = ifelse(is.na(`Spin Rate`) | is.infinite(`Spin Rate`), NA, `Spin Rate`),
       Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
     )
   
