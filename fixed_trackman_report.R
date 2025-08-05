@@ -57,7 +57,8 @@ create_trackman_report <- function(data, pitcher_name) {
       PitchType = if("pitch_name" %in% names(.)) pitch_name else if("pitch_type" %in% names(.)) pitch_type else NA,
       RelSpeed = if("release_speed" %in% names(.)) release_speed else NA,
       # Try multiple possible spin rate column names
-      SpinRate = if("release_spin" %in% names(.)) release_spin 
+      SpinRate = if("release_spin_rate" %in% names(.)) release_spin_rate
+                 else if("release_spin" %in% names(.)) release_spin 
                  else if("spin_rate" %in% names(.)) spin_rate 
                  else if("spin_rate_deprecated" %in% names(.)) spin_rate_deprecated 
                  else NA,
@@ -88,6 +89,7 @@ create_trackman_report <- function(data, pitcher_name) {
   
   # Debug: Check what spin rate values we actually have
   print("Spin Rate column check:")
+  print(paste("Has release_spin_rate:", "release_spin_rate" %in% names(data)))
   print(paste("Has release_spin:", "release_spin" %in% names(data)))
   print(paste("Has spin_rate:", "spin_rate" %in% names(data)))
   print(paste("SpinRate values summary:"))
