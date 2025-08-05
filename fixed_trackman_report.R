@@ -523,8 +523,14 @@ create_trackman_report <- function(data, pitcher_name) {
     for(i in 1:nrow(pitch_metrics)) {
       pitch_type <- pitch_metrics$PitchType[i]
       if(pitch_type %in% names(pitch_colors)) {
-        colored_table$grobs[[i + ncol(pitch_metrics)]]$gp$col <- pitch_colors[pitch_type]
-        colored_table$grobs[[i + ncol(pitch_metrics)]]$gp$fontface <- "bold"
+        # Get the grob index for the pitch type cell
+        grob_index <- i + ncol(pitch_metrics)
+        if(grob_index <= length(colored_table$grobs)) {
+          # Only set color, avoid fontface conflict
+          colored_table$grobs[[grob_index]]$gp$col <- pitch_colors[pitch_type]
+          # Remove any existing font parameter to avoid conflict
+          colored_table$grobs[[grob_index]]$gp$font <- NULL
+        }
       }
     }
   }
