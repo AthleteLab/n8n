@@ -335,8 +335,24 @@ create_trackman_report <- function(data, pitcher_name) {
     } else {
       tilt_density_polygons <- NULL
     }
+    
+    # Calculate average arm angle for each pitch type
+    arm_angle_lines <- tilt_density_data %>%
+      group_by(PitchType) %>%
+      summarise(avg_arm_angle = mean(ArmAngle, na.rm = TRUE), .groups = 'drop') %>%
+      filter(!is.na(avg_arm_angle)) %>%
+      mutate(
+        # Convert arm angle to radians (0° = right, 90° = up)
+        theta = avg_arm_angle * pi / 180,
+        # Create line from center to clock edge
+        x_start = 0,
+        y_start = 0,
+        x_end = 0.75 * cos(theta),  # Stop just short of clock edge
+        y_end = 0.75 * sin(theta)
+      )
   } else {
     tilt_density_polygons <- NULL
+    arm_angle_lines <- NULL
   }
   
   tilt_plot <- ggplot() +
@@ -350,6 +366,13 @@ create_trackman_report <- function(data, pitcher_name) {
                  color = "black", size = 0.5) +
     # Clock numbers inside
     geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 4, fontface = "bold") +
+    # Average arm angle lines for each pitch type
+    {
+      if (!is.null(arm_angle_lines) && nrow(arm_angle_lines) > 0) {
+        geom_segment(data = arm_angle_lines, aes(x = x_start, y = y_start, xend = x_end, yend = y_end, color = PitchType), 
+                     size = 2, alpha = 0.8)
+      }
+    } +
     # Density polygons around the edge
     {
       if (!is.null(tilt_density_polygons) && nrow(tilt_density_polygons) > 0) {
