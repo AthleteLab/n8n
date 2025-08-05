@@ -250,10 +250,40 @@ create_trackman_report <- function(data, pitcher_name) {
          y = "Induced Vertical Break (inches)")
   
   # 3. Create release point plot
+  # Calculate average release point for each pitch type
+  avg_release_points <- pitcher_data %>%
+    group_by(PitchType) %>%
+    summarise(
+      avg_rel_side = mean(RelSide, na.rm = TRUE),
+      avg_rel_height = mean(RelHeight, na.rm = TRUE),
+      avg_arm_angle = mean(ArmAngle, na.rm = TRUE),
+      .groups = 'drop'
+    ) %>%
+    filter(!is.na(avg_arm_angle)) %>%
+    mutate(
+      # Calculate line endpoints from x-axis to cluster center
+      # Start at x-axis (y=0) at the same horizontal position as cluster center
+      line_start_x = avg_rel_side,
+      line_start_y = 0,
+      line_end_x = avg_rel_side,
+      line_end_y = avg_rel_height
+    )
+  
   release_plot <- ggplot(pitcher_data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
+    # Add arm angle lines from x-axis to cluster centers
+    geom_segment(data = avg_release_points, 
+                 aes(x = line_start_x, y = line_start_y, 
+                     xend = line_end_x, yend = line_end_y, color = PitchType),
+                 size = 2, alpha = 0.8, inherit.aes = FALSE) +
+    # Add the individual release points
     geom_point(alpha = 0.7, size = 2) +
+    # Add average release point markers
+    geom_point(data = avg_release_points, 
+               aes(x = avg_rel_side, y = avg_rel_height, color = PitchType),
+               size = 4, shape = 17, inherit.aes = FALSE) +  # Triangle markers
     theme_minimal() +
     labs(title = "Release Point", 
+         subtitle = "Lines show avg arm angle path to cluster center",
          x = "Release Side (feet)", 
          y = "Release Height (feet)") +
     coord_fixed(xlim = c(-3, 3), ylim = c(0, 8))
