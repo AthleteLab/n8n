@@ -9,16 +9,35 @@ library(grid)     # For textGrob and gpar
 
 # Function to convert spin axis to clock face tilt
 spin_to_tilt <- function(spin_axis) {
-  # Convert spin axis to clock position (180° at top, clockwise)
+  # Baseball Savant spin_axis: 180° = pure backspin (12:00), 0° = pure topspin (6:00)
+  # Need to convert to clock face where 180° = 12:00
   
   # First normalize to 0-360 range
   normalized <- (spin_axis + 360) %% 360
   
-  # Convert to clock position (180° = 12 o'clock, clockwise)
-  clock <- ((-normalized + 180 + 360) %% 360) / 30
+  # Convert spin axis directly to clock hours
+  # 180° = 12:00, so we subtract from 180 and divide by 15 (360°/24 positions)
+  # But we want 12-hour clock, so divide by 30 (360°/12 positions)
+  clock_decimal <- (180 - normalized) / 30
+  
+  # Normalize to 0-12 range
+  clock_decimal <- (clock_decimal + 12) %% 12
+  if (clock_decimal == 0) clock_decimal <- 12
+  
+  # Convert decimal to hours:minutes
+  hours <- floor(clock_decimal)
+  minutes <- round((clock_decimal - hours) * 60)
+  
+  # Handle minute overflow
+  if (minutes >= 60) {
+    hours <- hours + 1
+    minutes <- 0
+  }
+  if (hours > 12) hours <- hours - 12
+  if (hours == 0) hours <- 12
   
   # Format as clock position
-  sprintf("%d:%02d", floor(clock), round((clock %% 1) * 60))
+  sprintf("%d:%02d", hours, minutes)
 }
 
 # Function to create circle points
@@ -257,10 +276,14 @@ create_trackman_report <- function(data, pitcher_name) {
     tilt_points <- pitcher_data %>%
       filter(!is.na(SpinAxis)) %>%
       mutate(
-        angle = (SpinAxis + 360) %% 360, # normalize
-        theta = (pi/180) * (-angle + 90), # convert to radians, 0 at top, clockwise
-        x = 0.95 * cos(theta), # Position on outer edge
-        y = 0.95 * sin(theta)
+        # Convert spin axis to clock position (same logic as spin_to_tilt function)
+        normalized_spin = (SpinAxis + 360) %% 360,
+        # Convert to clock angle: 180° = 12:00 (top), going clockwise
+        clock_angle_deg = (180 - normalized_spin + 360) %% 360,
+        # Convert to radians with 0 at top, going clockwise
+        theta = (clock_angle_deg * pi / 180) - pi/2,
+        x = 0.95 * cos(-theta), # Negative for clockwise direction
+        y = 0.95 * sin(-theta)
       )
   } else {
     tilt_points <- NULL
