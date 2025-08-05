@@ -352,29 +352,26 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     heights = c(0.5, 2, 4)
   )
   
-     # PAGE 4 - PITCH LOG
-   pitch_log <- pitcher_data %>%
-     arrange(game_date, Inning, InningTop, AtBatNumber, PitchNumber) %>%
-     mutate(
-       # Create proper pitch numbering: Inning.PA.Pitch
-       InningPA = paste0(Inning, 
-                        ifelse(InningTop == "Top", "T", "B"), 
-                        ".", 
-                        AtBatNumber),
-       `Pitch #` = paste0(InningPA, ".", PitchNumber),
-       `PA #` = paste0(Inning, ifelse(InningTop == "Top", "T", "B"), ".", AtBatNumber),
-       `Pitch Type` = PitchType,
-       IVB = round(InducedVertBreak, 1),
-       HB = round(HorzBreak, 1),
-       `Spin Rate` = round(SpinRate, 0),
-       Tilt = spin_to_tilt(SpinAxis),
-       `Release Height` = round(RelHeight, 2),
-       `Release Side` = round(RelSide, 2),
-       Extension = round(Extension, 2)
-     ) %>%
-     select(`Pitch #`, `PA #`, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
-            `Release Height`, `Release Side`, Extension, Result) %>%
-     slice_head(n = 50)  # Limit for display
+           # PAGE 4 - PITCH LOG
+    pitch_log <- pitcher_data %>%
+      arrange(game_date, Inning, InningTop, AtBatNumber, PitchNumber) %>%
+      mutate(
+        # Simple sequential numbering
+        `Pitch #` = row_number(),
+        # PA number: just sequential count of unique at-bats
+        `PA #` = as.numeric(as.factor(paste(game_date, Inning, InningTop, AtBatNumber))),
+        `Pitch Type` = PitchType,
+        IVB = round(InducedVertBreak, 1),
+        HB = round(HorzBreak, 1),
+        `Spin Rate` = round(SpinRate, 0),
+        Tilt = spin_to_tilt(SpinAxis),
+        `Release Height` = round(RelHeight, 2),
+        `Release Side` = round(RelSide, 2),
+        Extension = round(Extension, 2)
+      ) %>%
+      select(`Pitch #`, `PA #`, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
+             `Release Height`, `Release Side`, Extension, Result) %>%
+      slice_head(n = 50)  # Limit for display
   
   page4_table <- tableGrob(pitch_log, rows = NULL)
   
