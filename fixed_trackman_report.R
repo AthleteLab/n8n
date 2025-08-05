@@ -147,14 +147,23 @@ create_trackman_report <- function(data, pitcher_name) {
     labs(title = "Pitch Locations")
   
   # 4. Create pitch movement plot
-  # Get the most used pitch type and its average arm angle
-  most_used_pitch <- pitch_metrics %>%
+  # Get the primary fastball (FF or SI - whichever is thrown more) and its average arm angle
+  primary_fastball <- pitch_metrics %>%
+    filter(PitchType %in% c("FF", "SI")) %>%
     arrange(desc(`Usage%`)) %>%
     slice(1) %>%
     pull(PitchType)
   
+  # If no FF or SI found, fall back to most used pitch
+  if(length(primary_fastball) == 0) {
+    primary_fastball <- pitch_metrics %>%
+      arrange(desc(`Usage%`)) %>%
+      slice(1) %>%
+      pull(PitchType)
+  }
+  
   avg_arm_angle <- pitcher_data %>%
-    filter(PitchType == most_used_pitch) %>%
+    filter(PitchType == primary_fastball) %>%
     summarise(avg_angle = mean(ArmAngle, na.rm = TRUE)) %>%
     pull(avg_angle)
   
@@ -209,7 +218,7 @@ create_trackman_report <- function(data, pitcher_name) {
     coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
     theme_minimal() +
     labs(title = "Pitch Movements", 
-         subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", most_used_pitch, " avg arm angle (", round(avg_arm_angle, 1), "°). Large dots = avg movement") else "Large dots = avg movement")
+         subtitle = if(!is.na(avg_arm_angle)) paste0("Red line: ", primary_fastball, " avg arm angle (", round(avg_arm_angle, 1), "°). Large dots = avg movement") else "Large dots = avg movement")
   
   # 5. Create pitch usage pie chart
   usage_plot <- pitcher_data %>%
