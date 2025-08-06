@@ -615,15 +615,15 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   # Page 4A - Pitches 1-50
   pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
   
-    page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
-                           theme = ttheme_default(
-                             core = list(fg_params = list(cex = 0.75),  # Larger text
-                                        bg_params = list(fill = c("white", "grey95")),
-                                        padding = unit(c(2, 2), "mm")),  # Less padding
-                             colhead = list(fg_params = list(cex = 0.75, fontface = "bold"),
-                                           bg_params = list(fill = "lightblue"),
-                                           padding = unit(c(2, 2), "mm"))
-                           ))
+         page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
+                             theme = ttheme_default(
+                              core = list(fg_params = list(cex = 1.2),  # Much larger text
+                                         bg_params = list(fill = c("white", "grey95")),
+                                         padding = unit(c(1, 1), "mm")),  # Minimal padding
+                              colhead = list(fg_params = list(cex = 1.2, fontface = "bold"),
+                                            bg_params = list(fill = "lightblue"),
+                                            padding = unit(c(1, 1), "mm"))
+                             ))
   
   page4a <- grid.arrange(
     textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 10, fontface = "bold")),
@@ -637,12 +637,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     
         page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
                              theme = ttheme_default(
-                               core = list(fg_params = list(cex = 0.75),  # Larger text
+                               core = list(fg_params = list(cex = 1.2),  # Much larger text
                                           bg_params = list(fill = c("white", "grey95")),
-                                          padding = unit(c(2, 2), "mm")),  # Less padding
-                               colhead = list(fg_params = list(cex = 0.75, fontface = "bold"),
+                                          padding = unit(c(1, 1), "mm")),  # Minimal padding
+                               colhead = list(fg_params = list(cex = 1.2, fontface = "bold"),
                                              bg_params = list(fill = "lightblue"),
-                                             padding = unit(c(2, 2), "mm"))
+                                             padding = unit(c(1, 1), "mm"))
                              ))
     
     page4b <- grid.arrange(
@@ -660,10 +660,10 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   ggsave(paste0(clean_pitcher_name, "_Page1_Summary_", filename_date, ".pdf"), page1, width = 12, height = 16)
   ggsave(paste0(clean_pitcher_name, "_Page2_vs_LHB_", filename_date, ".pdf"), page2, width = 12, height = 16)
   ggsave(paste0(clean_pitcher_name, "_Page3_vs_RHB_", filename_date, ".pdf"), page3, width = 12, height = 16)
-  ggsave(paste0(clean_pitcher_name, "_Page4A_PitchLog_Part1_", filename_date, ".pdf"), page4a, width = 12, height = 16)
+  ggsave(paste0(clean_pitcher_name, "_Page4A_PitchLog_Part1_", filename_date, ".pdf"), page4a, width = 16, height = 20)
   
   if (!is.null(page4b)) {
-    ggsave(paste0(clean_pitcher_name, "_Page4B_PitchLog_Part2_", filename_date, ".pdf"), page4b, width = 12, height = 16)
+    ggsave(paste0(clean_pitcher_name, "_Page4B_PitchLog_Part2_", filename_date, ".pdf"), page4b, width = 16, height = 20)
   }
   
   pages_generated <- ifelse(is.null(page4b), 4, 5)
