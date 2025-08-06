@@ -586,8 +586,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     ) %>%
     # Remove temporary columns and select final columns
     select(`Pitch #`, `PA #`, `Pitch # in PA`, Inning, Outs, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
-           `Release Height`, `Release Side`, Extension, Result) %>%
-    slice_head(n = 50)  # Limit for display
+           `Release Height`, `Release Side`, Extension, Result)
+    # No limit - show ALL pitches
   
   # Debug: Check what innings we have in the data
   print("Available innings in the data:")
@@ -616,7 +616,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                           ))
   
   page4 <- grid.arrange(
-    textGrob(paste("Page 4 - Pitch Log (First 50 Pitches):", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
+    textGrob(paste("Page 4 - Complete Pitch Log:", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
     page4_table,
     heights = c(0.5, 6)
   )
