@@ -501,26 +501,42 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   pitch_log <- pitcher_data %>%
     mutate(
       # Create unique PA identifier using game_pk + pitcher + batter + n_priorpa_thisgame_player_at_bat
-      PA_UID = paste(GamePK, Pitcher, Batter, PriorPA, sep = "_")
+      PA_UID = paste(GamePK, Pitcher, Batter, PriorPA, sep = "_"),
+      # Create Count column from balls and strikes
+      Count = paste0(if("balls" %in% names(.)) balls else 0, "-", if("strikes" %in% names(.)) strikes else 0)
     ) %>%
-    # Sort by: pitcher, game_date, game_pk, PA identifier, then n_thruorder_pitcher (ascending)
+    # CRITICAL: Sort by pitcher, game_date, game_pk, PA identifier, then n_thruorder_pitcher (ASCENDING)
     arrange(Pitcher, game_datetime, GamePK, PA_UID, ThroughOrder) %>%
     group_by(Pitcher) %>%
     mutate(
-      # Create sequential PA numbers
+      # Create sequential PA numbers based on PA_UID changes
       PA_Group = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)])),
       # Overall pitch number for this pitcher
       `Pitch #` = row_number()
     ) %>%
-    group_by(Pitcher, PA_Group) %>%
+    group_by(Pitcher, PA_UID) %>%
+    arrange(Pitcher, PA_UID, ThroughOrder) %>%  # Ensure proper ordering within each PA
     mutate(
       # Pitch number within this specific PA (should start at 1 for each PA)
       `Pitch # in PA` = row_number()
     ) %>%
     ungroup() %>%
+    # Final sort to ensure everything is in proper order
+    arrange(Pitcher, game_datetime, GamePK, PA_UID, ThroughOrder) %>%
+    group_by(Pitcher) %>%
     mutate(
+      # Recalculate global pitch numbers after final sort
+      `Pitch #` = row_number(),
       # Clean PA number (sequential count)
-      `PA #` = PA_Group,
+      `PA #` = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)]))
+    ) %>%
+    group_by(Pitcher, `PA #`) %>%
+    mutate(
+      # Recalculate pitch number within PA after final sort
+      `Pitch # in PA` = row_number()
+    ) %>%
+    ungroup() %>%
+    mutate(
       `Pitch Type` = PitchType,
       IVB = round(InducedVertBreak, 1),
       HB = round(HorzBreak, 1),
@@ -535,7 +551,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
            `Release Height`, `Release Side`, Extension, Result) %>%
     slice_head(n = 50)  # Limit for display
   
-  page4_table <- tableGrob(pitch_log, rows = NULL)
+  # Create table with smaller font to fit more columns
+  page4_table <- tableGrob(pitch_log, rows = NULL, 
+                          theme = ttheme_default(
+                            core = list(fg_params = list(cex = 0.7)),  # Smaller text
+                            colhead = list(fg_params = list(cex = 0.7, fontface = "bold"))  # Smaller headers
+                          ))
   
   page4 <- grid.arrange(
     textGrob(paste("Page 4 - Pitch Log (First 50 Pitches):", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
