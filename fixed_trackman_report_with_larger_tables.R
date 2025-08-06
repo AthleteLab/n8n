@@ -612,9 +612,10 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   total_pitches <- nrow(pitch_log)
   pitches_per_page <- 50
   
-  # Page 4A - Pitches 1-50 with MUCH LARGER TABLE
+  # Page 4A - Pitches 1-50 with PA separation lines
   pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
   
+  # Create custom theme with PA separation lines
   page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
                             theme = ttheme_default(
                               core = list(fg_params = list(cex = 0.95),  # Slightly smaller to prevent cutoff
@@ -625,13 +626,25 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                                              padding = unit(c(3, 2), "mm"))  # Reduced header padding
                             ))
   
+  # Add horizontal lines above each new PA (0-0 count rows)
+  new_pa_rows <- which(pitch_log_page1$Count == "0-0" & pitch_log_page1$`Pitch # in PA` == 1)
+  if(length(new_pa_rows) > 0) {
+    # Add thick horizontal lines above new PAs (skip first row since it's already at top)
+    for(row in new_pa_rows[new_pa_rows > 1]) {
+      page4a_table <- gtable_add_grob(page4a_table, 
+                                      segmentsGrob(x0 = 0, x1 = 1, y0 = 0.5, y1 = 0.5, 
+                                                   gp = gpar(lwd = 2, col = "black")),
+                                      t = row, l = 1, r = ncol(page4a_table))
+    }
+  }
+  
   page4a <- grid.arrange(
     textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
     page4a_table,
     heights = c(0.04, 6.96)  # Even smaller title, maximized table space
   )
   
-  # Page 4B - Pitches 51-100 (if they exist) with MUCH LARGER TABLE
+  # Page 4B - Pitches 51-100 (if they exist) with PA separation lines
   if (total_pitches > 50) {
     pitch_log_page2 <- pitch_log %>% slice(51:min(100, total_pitches))
     
@@ -644,6 +657,18 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                                                bg_params = list(fill = "lightblue"),
                                                padding = unit(c(3, 2), "mm"))  # Reduced header padding
                               ))
+    
+    # Add horizontal lines above each new PA (0-0 count rows) for page 4B
+    new_pa_rows_4b <- which(pitch_log_page2$Count == "0-0" & pitch_log_page2$`Pitch # in PA` == 1)
+    if(length(new_pa_rows_4b) > 0) {
+      # Add thick horizontal lines above new PAs (skip first row since it's already at top)
+      for(row in new_pa_rows_4b[new_pa_rows_4b > 1]) {
+        page4b_table <- gtable_add_grob(page4b_table, 
+                                        segmentsGrob(x0 = 0, x1 = 1, y0 = 0.5, y1 = 0.5, 
+                                                     gp = gpar(lwd = 2, col = "black")),
+                                        t = row, l = 1, r = ncol(page4b_table))
+      }
+    }
     
     page4b <- grid.arrange(
       textGrob(paste("Page 4B - Pitches 51-100:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
