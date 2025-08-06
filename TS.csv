@@ -1,0 +1,44 @@
+# Helper functions for the comprehensive report
+create_movement_plot <- function(data) {
+  # Simplified version of existing movement plot
+  avg_movement <- data %>%
+    group_by(PitchType) %>%
+    summarise(
+      avg_horz = mean(HorzBreak, na.rm = TRUE),
+      avg_vert = mean(InducedVertBreak, na.rm = TRUE),
+      avg_arm_angle = mean(ArmAngle, na.rm = TRUE),
+      .groups = 'drop'
+    )
+  
+  # Create the base movement plot
+  movement_plot <- ggplot(data, aes(x = HorzBreak, y = InducedVertBreak, color = PitchType)) +
+    geom_hline(yintercept = 0, color = "black", size = 0.5) +
+    geom_vline(xintercept = 0, color = "black", size = 0.5) +
+    geom_point(alpha = 0.6) +
+    geom_point(data = avg_movement, aes(x = avg_horz, y = avg_vert, color = PitchType), 
+               size = 4, inherit.aes = FALSE) +
+    scale_color_manual(values = pitch_colors) +
+    coord_fixed(xlim = c(-25, 25), ylim = c(-25, 25)) +
+    theme_minimal() +
+    labs(title = "Pitch Movement", subtitle = "Pitcher View")
+  
+  # Add arm angle annotations if ArmAngle data is available
+  if ("ArmAngle" %in% names(data) && any(!is.na(data$ArmAngle))) {
+    # Create arm angle labels for each pitch type
+    arm_angle_labels <- avg_movement %>%
+      filter(!is.na(avg_arm_angle)) %>%
+      mutate(
+        arm_angle_text = paste0("Arm: ", round(avg_arm_angle, 0), "°"),
+        # Position labels near the average points but offset slightly
+        label_x = avg_horz + 2,
+        label_y = avg_vert + 2
+      )
+    
+    movement_plot <- movement_plot +
+      geom_text(data = arm_angle_labels, 
+                aes(x = label_x, y = label_y, label = arm_angle_text, color = PitchType),
+                size = 3, fontface = "bold", inherit.aes = FALSE)
+  }
+  
+  return(movement_plot)
+}
