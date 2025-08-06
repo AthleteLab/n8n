@@ -501,39 +501,43 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   pitch_log <- pitcher_data %>%
     mutate(
       # Create unique PA identifier using game_pk + pitcher + batter + n_priorpa_thisgame_player_at_bat
-      PA_UID = paste(GamePK, Pitcher, Batter, PriorPA, sep = "_"),
-      # Create Count column from balls and strikes
-      Count = paste0(if("balls" %in% names(.)) balls else 0, "-", if("strikes" %in% names(.)) strikes else 0)
+      PA_UID = paste(GamePK, Pitcher, Batter, PriorPA, sep = "_")
     ) %>%
     # CRITICAL: Sort by pitcher, game_date, game_pk, PA identifier, then n_thruorder_pitcher (ASCENDING)
     arrange(Pitcher, game_datetime, GamePK, PA_UID, ThroughOrder) %>%
     group_by(Pitcher) %>%
     mutate(
-      # Create sequential PA numbers based on PA_UID changes
-      PA_Group = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)])),
-      # Overall pitch number for this pitcher
-      `Pitch #` = row_number()
-    ) %>%
-    group_by(Pitcher, PA_UID) %>%
-    arrange(Pitcher, PA_UID, ThroughOrder) %>%  # Ensure proper ordering within each PA
-    mutate(
-      # Pitch number within this specific PA (should start at 1 for each PA)
-      `Pitch # in PA` = row_number()
-    ) %>%
-    ungroup() %>%
-    # Final sort to ensure everything is in proper order
-    arrange(Pitcher, game_datetime, GamePK, PA_UID, ThroughOrder) %>%
-    group_by(Pitcher) %>%
-    mutate(
-      # Recalculate global pitch numbers after final sort
+      # Global pitch number for this pitcher
       `Pitch #` = row_number(),
-      # Clean PA number (sequential count)
+      # Create sequential PA numbers based on PA_UID changes
       `PA #` = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)]))
     ) %>%
     group_by(Pitcher, `PA #`) %>%
     mutate(
-      # Recalculate pitch number within PA after final sort
+      # Pitch number within this specific PA
       `Pitch # in PA` = row_number()
+    ) %>%
+    ungroup() %>%
+    # CRITICAL: Recalculate balls and strikes from scratch based on pitch results
+    group_by(Pitcher, `PA #`) %>%
+    arrange(Pitcher, `PA #`, `Pitch # in PA`) %>%
+    mutate(
+      # Determine if this pitch is a ball or strike based on Result
+      Is_Ball = case_when(
+        grepl("Ball|Hit By Pitch", Result, ignore.case = TRUE) ~ 1,
+        TRUE ~ 0
+      ),
+      Is_Strike = case_when(
+        grepl("Called Strike|Swinging Strike", Result, ignore.case = TRUE) ~ 1,
+        grepl("Foul", Result, ignore.case = TRUE) & lag(cumsum(Is_Strike), default = 0) < 2 ~ 1,
+        grepl("Foul", Result, ignore.case = TRUE) & lag(cumsum(Is_Strike), default = 0) >= 2 ~ 0,
+        TRUE ~ 0
+      ),
+      # Calculate running count within PA
+      Running_Balls = lag(cumsum(Is_Ball), default = 0),
+      Running_Strikes = lag(cumsum(Is_Strike), default = 0),
+      # Create Count string - ALWAYS starts at 0-0 for first pitch in PA
+      Count = paste0(Running_Balls, "-", Running_Strikes)
     ) %>%
     ungroup() %>%
     mutate(
@@ -546,10 +550,18 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       `Release Side` = round(RelSide, 1),
       Extension = round(Extension, 2)
     ) %>%
-    # Remove temporary UID columns and select final columns
+    # Remove temporary columns and select final columns
     select(`Pitch #`, `PA #`, `Pitch # in PA`, Inning, Outs, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
            `Release Height`, `Release Side`, Extension, Result) %>%
     slice_head(n = 50)  # Limit for display
+  
+  # Debug: Print first 3 PAs to verify correct count progression
+  debug_pas <- pitch_log %>%
+    filter(`PA #` <= 3) %>%
+    select(`Pitch #`, `PA #`, `Pitch # in PA`, Count, `Pitch Type`, Result)
+  
+  print("First 3 PAs for debugging:")
+  print(debug_pas)
   
   # Create table with smaller font to fit more columns
   page4_table <- tableGrob(pitch_log, rows = NULL, 
