@@ -617,12 +617,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   
   page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
                             theme = ttheme_default(
-                              core = list(fg_params = list(cex = 1.1),  # MODERATE text size - readable but not huge
+                              core = list(fg_params = list(cex = 0.95),  # Slightly smaller to prevent cutoff
                                           bg_params = list(fill = c("white", "grey95")),
-                                          padding = unit(c(4, 3), "mm")),  # MODERATE padding for good fit
-                              colhead = list(fg_params = list(cex = 1.1, fontface = "bold"),  # MODERATE headers
+                                          padding = unit(c(3, 2), "mm")),  # Reduced padding to fit better
+                              colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),  # Smaller headers
                                              bg_params = list(fill = "lightblue"),
-                                             padding = unit(c(4, 3), "mm"))  # MODERATE padding for headers
+                                             padding = unit(c(3, 2), "mm"))  # Reduced header padding
                             ))
   
   page4a <- grid.arrange(
@@ -637,12 +637,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     
     page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
                               theme = ttheme_default(
-                                core = list(fg_params = list(cex = 1.1),  # MODERATE text size - readable but not huge
+                                core = list(fg_params = list(cex = 0.95),  # Slightly smaller to prevent cutoff
                                             bg_params = list(fill = c("white", "grey95")),
-                                            padding = unit(c(4, 3), "mm")),  # MODERATE padding for good fit
-                                colhead = list(fg_params = list(cex = 1.1, fontface = "bold"),  # MODERATE headers
+                                            padding = unit(c(3, 2), "mm")),  # Reduced padding to fit better
+                                colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),  # Smaller headers
                                                bg_params = list(fill = "lightblue"),
-                                               padding = unit(c(4, 3), "mm"))  # MODERATE padding for headers
+                                               padding = unit(c(3, 2), "mm"))  # Reduced header padding
                               ))
     
     page4b <- grid.arrange(
