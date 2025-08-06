@@ -608,12 +608,12 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   print("First 3 PAs for debugging:")
   print(debug_pas)
   
-  # Split pitch log into 2 pages to prevent cutoff
+  # Split pitch log into pages of 50 pitches each
   total_pitches <- nrow(pitch_log)
-  pitches_per_page <- ceiling(total_pitches / 2)
+  pitches_per_page <- 50
   
-  # Page 4A - First half of pitches
-  pitch_log_page1 <- pitch_log %>% slice(1:pitches_per_page)
+  # Page 4A - Pitches 1-50
+  pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
   
   page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
                            theme = ttheme_default(
@@ -621,15 +621,15 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                              colhead = list(fg_params = list(cex = 0.6, fontface = "bold"))
                            ))
   
-  page4a <- grid.arrange(
-    textGrob(paste("Page 4A - Pitch Log (Part 1):", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
-    page4a_table,
-    heights = c(0.3, 6.7)  # More space for table
-  )
+       page4a <- grid.arrange(
+       textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
+       page4a_table,
+       heights = c(0.3, 6.7)  # More space for table
+     )
   
-  # Page 4B - Second half of pitches
-  if (total_pitches > pitches_per_page) {
-    pitch_log_page2 <- pitch_log %>% slice((pitches_per_page + 1):total_pitches)
+  # Page 4B - Pitches 51-100 (if they exist)
+  if (total_pitches > 50) {
+    pitch_log_page2 <- pitch_log %>% slice(51:min(100, total_pitches))
     
     page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
                              theme = ttheme_default(
@@ -637,11 +637,11 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                                colhead = list(fg_params = list(cex = 0.6, fontface = "bold"))
                              ))
     
-    page4b <- grid.arrange(
-      textGrob(paste("Page 4B - Pitch Log (Part 2):", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
-      page4b_table,
-      heights = c(0.3, 6.7)
-    )
+         page4b <- grid.arrange(
+       textGrob(paste("Page 4B - Pitches 51-100:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
+       page4b_table,
+       heights = c(0.3, 6.7)
+     )
   } else {
     page4b <- NULL
   }
