@@ -185,8 +185,8 @@ create_heatmaps_by_pitch <- function(data) {
               fill = NA, color = "white", linewidth = 1.2) +
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black", linewidth = 0.8) +
-    # Home plate
-    geom_polygon(data = data.frame(x = c(-0.83/2, 0.83/2, 0.83/2, 0, -0.83/2), 
+    # Home plate (same width as strike zone)
+    geom_polygon(data = data.frame(x = c(-0.83, 0.83, 0.83, 0, -0.83), 
                                    y = c(0.15, 0.15, 0.3, 0.5, 0.3)),
                  aes(x = x, y = y), 
                  fill = "white", color = "black", linewidth = 1, inherit.aes = FALSE) +
@@ -195,10 +195,10 @@ create_heatmaps_by_pitch <- function(data) {
     theme_void() +
     theme(
       legend.position = "none",
-      strip.text = element_text(size = 11, face = "bold"),
-      plot.title = element_text(size = 14, hjust = 0.5)
+      strip.text = element_text(size = 11, face = "bold", margin = margin(t = 10, b = 5)),
+      plot.title = element_blank()
     ) +
-    labs(title = "Location Heatmaps by Pitch Type (Pitcher's View)")
+    labs(title = NULL)
   
   return(p)
 }
@@ -541,8 +541,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   page2 <- grid.arrange(
     textGrob(paste("Page 2 - Arsenal vs LHB:", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
     page2_arsenal,
+    textGrob("Location Heatmaps by Pitch Type (Pitcher's View)", gp = gpar(fontsize = 14, fontface = "bold")),
     page2_heatmaps,
-    heights = c(0.5, 2, 4)
+    heights = c(0.4, 2, 0.3, 4)
   )
   
   # PAGE 3 - vs RHB  
@@ -552,8 +553,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   page3 <- grid.arrange(
     textGrob(paste("Page 3 - Arsenal vs RHB:", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
     page3_arsenal,
+    textGrob("Location Heatmaps by Pitch Type (Pitcher's View)", gp = gpar(fontsize = 14, fontface = "bold")),
     page3_heatmaps,
-    heights = c(0.5, 2, 4)
+    heights = c(0.4, 2, 0.3, 4)
   )
   
   # PAGE 4 - PITCH LOG (FIXED VERSION)
