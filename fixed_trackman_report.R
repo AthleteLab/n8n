@@ -626,9 +626,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                            ))
   
   page4a <- grid.arrange(
-    textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 12, fontface = "bold")),
+    textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 10, fontface = "bold")),
     page4a_table,
-    heights = c(0.15, 6.85)  # Smaller title, more table space
+    heights = c(0.05, 6.95)  # Tiny title, almost all table space
   )
   
   # Page 4B - Pitches 51-100 (if they exist)
@@ -646,9 +646,9 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
                              ))
     
     page4b <- grid.arrange(
-      textGrob(paste("Page 4B - Pitches 51-100:", pitcher_name), gp = gpar(fontsize = 12, fontface = "bold")),
+      textGrob(paste("Page 4B - Pitches 51-100:", pitcher_name), gp = gpar(fontsize = 10, fontface = "bold")),
       page4b_table,
-      heights = c(0.15, 6.85)  # Smaller title, more table space
+      heights = c(0.05, 6.95)  # Tiny title, almost all table space
     )
   } else {
     page4b <- NULL
