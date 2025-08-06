@@ -195,7 +195,9 @@ create_heatmaps_by_pitch <- function(data) {
     theme_void() +
     theme(
       legend.position = "none",
-      strip.text = element_text(size = 11, face = "bold", margin = margin(t = 10, b = 5)),
+      strip.text = element_text(size = 14, face = "bold", margin = margin(t = 10, b = 5)),
+      strip.background = element_rect(fill = "gray95", color = "black", linewidth = 1),
+      panel.border = element_rect(color = "black", fill = NA, linewidth = 1.5),
       plot.title = element_blank()
     ) +
     labs(title = NULL)
