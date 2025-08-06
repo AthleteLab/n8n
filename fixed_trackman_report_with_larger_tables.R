@@ -138,51 +138,41 @@ create_heatmaps_by_pitch <- function(data) {
     group_by(PitchType) %>%
     summarise(count = n(), .groups = 'drop')
   
-  # Create base plot with Baseball Savant styling
-  p <- ggplot(data, aes(x = PlateLocSide, y = PlateLocHeight))
-  
-  # Add contour heatmaps only for pitch types with 5+ pitches (Baseball Savant style)
-  data_with_heatmap <- data %>%
+  # Filter out pitch types with insufficient data to prevent errors
+  data_clean <- data %>%
     left_join(pitch_counts, by = "PitchType") %>%
-    filter(count >= 5)
+    filter(count >= 2 & !is.na(PlateLocSide) & !is.na(PlateLocHeight))
   
-  if(nrow(data_with_heatmap) > 0) {
-    # Use stat_density_2d_filled with Baseball Savant-like colors
-    p <- p + stat_density_2d_filled(data = data_with_heatmap, 
-                                    alpha = 0.7, 
-                                    contour_var = "ndensity",
-                                    bins = 8) +
-             scale_fill_viridis_d(option = "plasma", direction = -1, alpha = 0.8)
+  if(nrow(data_clean) == 0) {
+    # Return simple plot if no valid data
+    return(ggplot() + theme_void() + labs(title = "No valid location data"))
   }
   
-  # Add points for all pitch types (essential for <5 pitches, overlay for 5+)
+  # Create simplified Baseball Savant-style plot
+  p <- ggplot(data_clean, aes(x = PlateLocSide, y = PlateLocHeight))
+  
+  # Add simple density contours for pitch types with 5+ pitches
+  data_with_heatmap <- data_clean %>% filter(count >= 5)
+  
+  if(nrow(data_with_heatmap) > 0) {
+    # Simplified density contours to prevent timeout
+    p <- p + geom_density_2d(data = data_with_heatmap, 
+                             aes(color = PitchType), 
+                             alpha = 0.6, linewidth = 1)
+  }
+  
+  # Add points for all pitch types
   p <- p + 
-    geom_point(aes(color = PitchType), alpha = 0.9, size = 1.5, stroke = 0.3) +
+    geom_point(aes(color = PitchType), alpha = 0.8, size = 1.5) +
     scale_color_manual(values = pitch_colors) +
-    # Strike zone rectangle (Baseball Savant style)
+    # Simple strike zone
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
-              fill = NA, color = "white", linewidth = 1.2) +
-    geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
-              fill = NA, color = "black", linewidth = 0.8) +
-    # Baseball Savant-style background and theming
+              fill = NA, color = "black", linewidth = 1) +
     facet_wrap(~ PitchType) +
     coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
-    theme_dark() +
-    theme(
-      panel.background = element_rect(fill = "gray20"),
-      plot.background = element_rect(fill = "gray15"),
-      panel.grid.major = element_line(color = "gray30", linewidth = 0.3),
-      panel.grid.minor = element_line(color = "gray25", linewidth = 0.2),
-      strip.background = element_rect(fill = "gray10"),
-      strip.text = element_text(color = "white", face = "bold", size = 11),
-      axis.text = element_text(color = "white", size = 9),
-      axis.title = element_text(color = "white", size = 10),
-      legend.position = "none",
-      panel.border = element_rect(color = "gray40", fill = NA, linewidth = 0.5)
-    ) +
-    labs(title = "Location Heatmaps by Pitch Type",
-         x = "Horizontal Location (feet)", 
-         y = "Vertical Location (feet)")
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(title = "Location Heatmaps by Pitch Type")
   
   return(p)
 }
