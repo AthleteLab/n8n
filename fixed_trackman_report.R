@@ -505,8 +505,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     mutate(
       # Identify PA-ending outcomes (remove markdown formatting for comparison)
       PA_Ending_Result = grepl("\\*\\*(In Play, Out\\(s\\)|Walk|Strikeout|Single|Double|Triple|Home Run|Hit By Pitch|Error|Sac Bunt, Out|Sac Fly, Out|Fielders Choice|Truncated PA|Catcher Interference)\\*\\*", Result),
-      # Create PA number based on cumulative count of PA-ending results
-      `PA #` = cumsum(c(1, PA_Ending_Result[-length(PA_Ending_Result)] == TRUE)) 
+      # Create PA number: start at 1, increment AFTER each PA-ending result
+      `PA #` = cumsum(c(0, PA_Ending_Result[-length(PA_Ending_Result)])) + 1
     ) %>%
     ungroup() %>%
     # CRITICAL FIX: Sort within each PA by count progression (balls ascending, then strikes ascending)
