@@ -135,16 +135,35 @@ create_release_plot <- function(data) {
     )
   
   # Create realistic mound and pitcher's rubber
-  # Mound is regulation 18 feet in diameter, 10 inches high at center
+  # Mound is regulation 18 feet in diameter, 10 inches high at center - make it circular
   mound_height <- 10/12  # 10 inches converted to feet (0.833 feet)
+  
+  # Create circular mound using many points for smooth curve
+  n_points <- 24
+  angles <- seq(0, 2*pi, length.out = n_points + 1)[-1]  # Remove duplicate last point
+  mound_radius <- 1.5  # 18 feet diameter = 9 feet radius, scaled down
+  
+  # Calculate heights based on distance from center (circular elevation)
+  distances <- abs(cos(angles)) + abs(sin(angles))  # Distance factor for elevation
+  heights <- pmax(0, mound_height * (1 - distances^1.2))  # Smooth falloff to edges
+  
   mound_shape <- data.frame(
-    x = c(-1.5, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.5, 1.5, 1.2, 0.8, 0.4, 0, -0.4, -0.8, -1.2, -1.5),
-    y = c(0, 0.2, 0.45, 0.65, mound_height, 0.65, 0.45, 0.2, 0, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1)
+    x = mound_radius * cos(angles),
+    y = heights
   )
   
-  # Pitcher's rubber (18 inches long, 4 inches wide) - embedded in the mound
-  rubber_length <- 18/12/2  # 18 inches converted to feet, then half for each side
-  rubber_width <- 4/12     # 4 inches converted to feet
+  # Add base points around the mound
+  base_points <- data.frame(
+    x = (mound_radius + 0.2) * cos(angles),
+    y = rep(-0.1, n_points)
+  )
+  
+  # Combine top and base for complete mound shape
+  mound_shape <- rbind(mound_shape, base_points[nrow(base_points):1, ])
+  
+  # Pitcher's rubber (2 feet long, 4 inches wide) - embedded in the mound
+  rubber_length <- 2/2  # 2 feet converted to half-width for each side (1 foot each way)
+  rubber_width <- 4/12  # 4 inches converted to feet
   pitcher_rubber <- data.frame(
     x = c(-rubber_length, rubber_length, rubber_length, -rubber_length),
     y = c(mound_height - 0.02, mound_height - 0.02, mound_height - 0.02 + rubber_width, mound_height - 0.02 + rubber_width)  # Embedded in mound surface
@@ -156,10 +175,10 @@ create_release_plot <- function(data) {
     geom_polygon(data = mound_shape, aes(x = x, y = y), 
                  fill = "#A0522D", color = "#8B4513", size = 1.2, 
                  inherit.aes = FALSE, alpha = 0.9) +
-         # Add mound shading for 3D effect
+         # Add mound shading for 3D effect (circular top surface)
      geom_polygon(data = data.frame(
-       x = c(-1.5, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.5),
-       y = c(0, 0.2, 0.45, 0.65, mound_height, 0.65, 0.45, 0.2, 0)
+       x = 0.8 * cos(seq(0, 2*pi, length.out = 17)),
+       y = rep(mound_height * 0.9, 16)
      ), aes(x = x, y = y), 
      fill = "#CD853F", color = "#A0522D", size = 0.8, 
      inherit.aes = FALSE, alpha = 0.7) +
