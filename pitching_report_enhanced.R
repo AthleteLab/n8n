@@ -124,7 +124,7 @@ create_movement_plot <- function(data) {
 }
 
 create_release_plot <- function(data) {
-  # Enhanced release plot with mound angle and arm angle information
+  # Enhanced release plot with realistic mound and arm angle information
   avg_release <- data %>%
     group_by(PitchType) %>%
     summarise(
@@ -134,45 +134,49 @@ create_release_plot <- function(data) {
       .groups = 'drop'
     )
   
+  # Create realistic mound and pitcher's rubber
+  mound_shape <- data.frame(
+    x = c(-1, -0.5, -0.3, 0.3, 0.5, 1, 1, -1),
+    y = c(-0.1, 0, 0.1, 0.1, 0, -0.1, -0.2, -0.2)
+  )
+  
+  # Pitcher's rubber (18 inches long, 4 inches wide)
+  rubber_length <- 18/12/2  # 18 inches converted to feet, then half for each side
+  rubber_width <- 4/12     # 4 inches converted to feet
+  pitcher_rubber <- data.frame(
+    x = c(-rubber_length, rubber_length, rubber_length, -rubber_length),
+    y = c(0, 0, rubber_width, rubber_width)
+  )
+  
   # Create the base release plot
   release_plot <- ggplot(data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
+    # Add realistic mound (dirt brown)
+    geom_polygon(data = mound_shape, aes(x = x, y = y), 
+                 fill = "#8B4513", color = "#654321", size = 1, 
+                 inherit.aes = FALSE, alpha = 0.8) +
+    # Add pitcher's rubber (white)
+    geom_polygon(data = pitcher_rubber, aes(x = x, y = y), 
+                 fill = "white", color = "black", size = 1.5, 
+                 inherit.aes = FALSE) +
+    # Add points for release locations
     geom_point(alpha = 0.7, size = 2) +
     scale_color_manual(values = pitch_colors) +
-    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 7.5)) +
+    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(-0.5, 7.5)) +
     theme_minimal() +
-    labs(title = "Release Point", subtitle = "Pitcher View")
-  
-  # Add mound reference line (pitcher's rubber is typically around y = 0.2)
-  release_plot <- release_plot +
-    geom_hline(yintercept = 0.2, color = "brown", linetype = "dashed", size = 1, alpha = 0.7) +
-    annotate("text", x = 2, y = 0.4, label = "Mound", color = "brown", fontface = "bold")
+    labs(title = "Release Point", subtitle = "Pitcher View") +
+    # Add mound label
+    annotate("text", x = 1.5, y = 0.3, label = "Pitcher's Mound", 
+             color = "#654321", fontface = "bold", size = 3)
   
   # Add arm angle information if available
   if ("ArmAngle" %in% names(data) && any(!is.na(data$ArmAngle))) {
-    # Add arm angle annotations for each pitch type
-    arm_angle_labels <- avg_release %>%
-      filter(!is.na(avg_arm_angle)) %>%
-      mutate(
-        arm_angle_text = paste0("Arm: ", round(avg_arm_angle, 0), "°"),
-        # Position labels to the right of release points
-        label_x = avg_rel_side + 0.3,
-        label_y = avg_rel_height
-      )
-    
-    release_plot <- release_plot +
-      geom_text(data = arm_angle_labels, 
-                aes(x = label_x, y = label_y, label = arm_angle_text, color = PitchType),
-                size = 3, fontface = "bold", inherit.aes = FALSE)
-    
-    # Add average arm angle lines from mound to release point
+    # Add average arm angle lines from rubber center to release point
     arm_angle_lines <- avg_release %>%
       filter(!is.na(avg_arm_angle)) %>%
       mutate(
-        # Calculate mound angle (angle from mound to release point)
-        mound_angle = atan2(avg_rel_height - 0.2, avg_rel_side) * 180 / pi,
-        # Create line segments showing the trajectory
+        # Create line segments from center of rubber to release point
         x_start = 0,
-        y_start = 0.2,  # Mound level
+        y_start = rubber_width/2,  # Center of rubber
         x_end = avg_rel_side,
         y_end = avg_rel_height
       )
@@ -628,23 +632,22 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
         `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
         `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
         Extension = round(mean(Extension, na.rm = TRUE), 1),
-        `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
-        `Avg Arm Angle` = round(mean(ArmAngle, na.rm = TRUE), 1),
-        # Advanced metrics
-        `Strike%` = round(mean(IsStrike, na.rm = TRUE) * 100, 1),
-        `Zone%` = round(mean(IsInZone, na.rm = TRUE) * 100, 1),
-        `Whiff%` = round(sum(IsWhiff, na.rm = TRUE) / sum(IsSwing, na.rm = TRUE) * 100, 1),
-        `CSW%` = round((sum(IsCalledStrike, na.rm = TRUE) + sum(IsWhiff, na.rm = TRUE)) / n() * 100, 1),
-        .groups = 'drop'
-      ) %>%
-      mutate(
-        `Usage%` = round((Count / sum(Count)) * 100, 1),
-        Tilt = spin_to_tilt(`Avg Spin Axis`),
-        Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
-      ) %>%
-      select(-`Avg Spin Axis`) %>%
-      select(PitchType, Count, `Usage%`, `Max Velo`, `Avg Velo`, `Spin Rate`, 
-             `Avg IVB`, `Avg HB`, Extension, Tilt, `Avg Arm Angle`, `Strike%`, `Zone%`, `Whiff%`, `CSW%`)
+                 `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
+         # Advanced metrics
+         `Strike%` = round(mean(IsStrike, na.rm = TRUE) * 100, 1),
+         `Zone%` = round(mean(IsInZone, na.rm = TRUE) * 100, 1),
+         `Whiff%` = round(sum(IsWhiff, na.rm = TRUE) / sum(IsSwing, na.rm = TRUE) * 100, 1),
+         `CSW%` = round((sum(IsCalledStrike, na.rm = TRUE) + sum(IsWhiff, na.rm = TRUE)) / n() * 100, 1),
+         .groups = 'drop'
+       ) %>%
+       mutate(
+         `Usage%` = round((Count / sum(Count)) * 100, 1),
+         Tilt = spin_to_tilt(`Avg Spin Axis`),
+         Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
+       ) %>%
+       select(-`Avg Spin Axis`) %>%
+       select(PitchType, Count, `Usage%`, `Max Velo`, `Avg Velo`, `Spin Rate`, 
+              `Avg IVB`, `Avg HB`, Extension, Tilt, `Strike%`, `Zone%`, `Whiff%`, `CSW%`)
     
     return(tableGrob(arsenal_metrics, rows = NULL))
   }
@@ -854,16 +857,15 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       `Pitch Type` = PitchType,
       IVB = round(InducedVertBreak, 1),
       HB = round(HorzBreak, 1),
-      `Spin Rate` = round(SpinRate, 0),
-      Tilt = spin_to_tilt(SpinAxis),
-      `Release Height` = round(RelHeight, 1),
-      `Release Side` = round(RelSide, 1),
-      Extension = round(Extension, 2),
-      `Arm Angle` = round(ArmAngle, 1)
-    ) %>%
-    # Remove temporary columns and select final columns
-    select(`Pitch #`, `PA #`, `Pitch # in PA`, Inning, Outs, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
-           `Release Height`, `Release Side`, Extension, `Arm Angle`, Result)
+             `Spin Rate` = round(SpinRate, 0),
+       Tilt = spin_to_tilt(SpinAxis),
+       `Release Height` = round(RelHeight, 1),
+       `Release Side` = round(RelSide, 1),
+       Extension = round(Extension, 2)
+     ) %>%
+     # Remove temporary columns and select final columns
+     select(`Pitch #`, `PA #`, `Pitch # in PA`, Inning, Outs, Count, `Pitch Type`, IVB, HB, `Spin Rate`, Tilt, 
+            `Release Height`, `Release Side`, Extension, Result)
   # No limit - show ALL pitches
   
   # Debug: Check what innings we have in the data
@@ -1098,23 +1100,22 @@ create_trackman_report <- function(data, pitcher_name) {
           `Spin Rate` = round(mean(SpinRate, na.rm = TRUE), 0),
           `Avg IVB` = round(mean(InducedVertBreak, na.rm = TRUE), 1),
           `Avg HB` = round(mean(HorzBreak, na.rm = TRUE), 1),
-          `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
-          Extension = round(mean(Extension, na.rm = TRUE), 1),
-          `Avg Arm Angle` = round(mean(ArmAngle, na.rm = TRUE), 1),
-          .groups = 'drop'
-        ) %>%
-        mutate(
-          Tilt = spin_to_tilt(`Avg Spin Axis`)
-        ) %>%
-        select(-`Avg Spin Axis`),
-      by = "PitchType"
-    ) %>%
-    # Fix Tilt formatting and handle spin rate issues
-    mutate(
-      # Don't replace spin rate with 0 - let's see what the actual values are
-      `Spin Rate` = ifelse(is.na(`Spin Rate`) | is.infinite(`Spin Rate`), NA, `Spin Rate`),
-      Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
-    )
+                     `Avg Spin Axis` = mean(SpinAxis, na.rm = TRUE),
+           Extension = round(mean(Extension, na.rm = TRUE), 1),
+           .groups = 'drop'
+         ) %>%
+         mutate(
+           Tilt = spin_to_tilt(`Avg Spin Axis`)
+         ) %>%
+         select(-`Avg Spin Axis`),
+       by = "PitchType"
+     ) %>%
+     # Fix Tilt formatting and handle spin rate issues
+     mutate(
+       # Don't replace spin rate with 0 - let's see what the actual values are
+       `Spin Rate` = ifelse(is.na(`Spin Rate`) | is.infinite(`Spin Rate`), NA, `Spin Rate`),
+       Tilt = ifelse(substr(Tilt, 1, 2) == "0:", paste0("12", substr(Tilt, 2, nchar(Tilt))), Tilt)
+     )
   
   # Create the plots using the helper functions
   movement_plot <- create_movement_plot(pitcher_data)
