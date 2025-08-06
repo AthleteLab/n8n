@@ -136,9 +136,10 @@ create_release_plot <- function(data) {
   
   # Create realistic mound and pitcher's rubber
   # Mound is regulation 18 feet in diameter, 10 inches high at center
+  mound_height <- 10/12  # 10 inches converted to feet (0.833 feet)
   mound_shape <- data.frame(
     x = c(-1.5, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.5, 1.5, 1.2, 0.8, 0.4, 0, -0.4, -0.8, -1.2, -1.5),
-    y = c(-0.15, -0.05, 0.05, 0.12, 0.15, 0.12, 0.05, -0.05, -0.15, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25)
+    y = c(0, 0.2, 0.45, 0.65, mound_height, 0.65, 0.45, 0.2, 0, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1)
   )
   
   # Pitcher's rubber (18 inches long, 4 inches wide) - embedded in the mound
@@ -146,7 +147,7 @@ create_release_plot <- function(data) {
   rubber_width <- 4/12     # 4 inches converted to feet
   pitcher_rubber <- data.frame(
     x = c(-rubber_length, rubber_length, rubber_length, -rubber_length),
-    y = c(0.08, 0.08, 0.08 + rubber_width, 0.08 + rubber_width)  # Embedded in mound surface
+    y = c(mound_height - 0.02, mound_height - 0.02, mound_height - 0.02 + rubber_width, mound_height - 0.02 + rubber_width)  # Embedded in mound surface
   )
   
   # Create the base release plot
@@ -155,13 +156,13 @@ create_release_plot <- function(data) {
     geom_polygon(data = mound_shape, aes(x = x, y = y), 
                  fill = "#A0522D", color = "#8B4513", size = 1.2, 
                  inherit.aes = FALSE, alpha = 0.9) +
-    # Add mound shading for 3D effect
-    geom_polygon(data = data.frame(
-      x = c(-1.5, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.5),
-      y = c(-0.15, -0.05, 0.05, 0.12, 0.15, 0.12, 0.05, -0.05, -0.15)
-    ), aes(x = x, y = y), 
-    fill = "#CD853F", color = "#A0522D", size = 0.8, 
-    inherit.aes = FALSE, alpha = 0.7) +
+         # Add mound shading for 3D effect
+     geom_polygon(data = data.frame(
+       x = c(-1.5, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.5),
+       y = c(0, 0.2, 0.45, 0.65, mound_height, 0.65, 0.45, 0.2, 0)
+     ), aes(x = x, y = y), 
+     fill = "#CD853F", color = "#A0522D", size = 0.8, 
+     inherit.aes = FALSE, alpha = 0.7) +
     # Add pitcher's rubber (white) embedded in mound
     geom_polygon(data = pitcher_rubber, aes(x = x, y = y), 
                  fill = "white", color = "black", size = 1.8, 
@@ -173,7 +174,7 @@ create_release_plot <- function(data) {
     theme_minimal() +
     labs(title = "Release Point", subtitle = "Pitcher View") +
          # Add mound label
-     annotate("text", x = 1.8, y = 0.4, label = "Pitcher's Mound", 
+     annotate("text", x = 1.8, y = 1.0, label = "Pitcher's Mound", 
               color = "#8B4513", fontface = "bold", size = 3.5)
   
   # Add arm angle information if available
@@ -184,7 +185,7 @@ create_release_plot <- function(data) {
       mutate(
                  # Create line segments from center of rubber to release point
          x_start = 0,
-         y_start = 0.08 + rubber_width/2,  # Center of embedded rubber
+         y_start = mound_height - 0.02 + rubber_width/2,  # Center of embedded rubber
          x_end = avg_rel_side,
          y_end = avg_rel_height
       )
