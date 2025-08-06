@@ -133,7 +133,7 @@ create_velocity_plot <- function(data) {
 }
 
 create_heatmaps_by_pitch <- function(data) {
-  # Super simple and fast - just points with strike zone
+  # Clean the data first
   data_clean <- data %>%
     filter(!is.na(PlateLocSide) & !is.na(PlateLocHeight) & !is.na(PitchType))
   
@@ -141,17 +141,50 @@ create_heatmaps_by_pitch <- function(data) {
     return(ggplot() + theme_void() + labs(title = "No valid location data"))
   }
   
-  # Simple scatter plot - no density calculations to avoid timeout
-  ggplot(data_clean, aes(x = PlateLocSide, y = PlateLocHeight, color = PitchType)) +
-    geom_point(alpha = 0.7, size = 2) +
+  # Count pitches by type and augment data if needed for contours
+  min_points_for_contour <- 10
+  
+  data_augmented <- data_clean %>%
+    group_by(PitchType) %>%
+    do({
+      current_data <- .
+      n_points <- nrow(current_data)
+      
+      if(n_points < min_points_for_contour && n_points > 0) {
+        # Need to duplicate points to reach minimum
+        times_to_repeat <- ceiling(min_points_for_contour / n_points)
+        # Repeat the data to have enough points for contour
+        replicated_data <- current_data[rep(1:n_points, times_to_repeat), ]
+        # Take only what we need
+        replicated_data[1:min_points_for_contour, ]
+      } else {
+        current_data
+      }
+    }) %>%
+    ungroup()
+  
+  # Create plot with contours
+  p <- ggplot(data_augmented, aes(x = PlateLocSide, y = PlateLocHeight))
+  
+  # Add contour heatmaps for all pitch types (now they all have enough data)
+  p <- p + 
+    geom_density_2d_filled(alpha = 0.6, bins = 6) +
+    scale_fill_viridis_d(option = "plasma", alpha = 0.7) +
+    # Add original points on top
+    geom_point(data = data_clean, aes(color = PitchType), alpha = 0.8, size = 1.5) +
     scale_color_manual(values = pitch_colors) +
+    # Strike zone
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
-              fill = NA, color = "black", linewidth = 1) +
+              fill = NA, color = "white", linewidth = 1.2) +
+    geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
+              fill = NA, color = "black", linewidth = 0.8) +
     facet_wrap(~ PitchType) +
     xlim(-2.5, 2.5) + ylim(0, 5) +
     theme_minimal() +
     theme(legend.position = "none") +
-    labs(title = "Location by Pitch Type", x = "Horizontal (ft)", y = "Vertical (ft)")
+    labs(title = "Location Heatmaps by Pitch Type", x = "Horizontal (ft)", y = "Vertical (ft)")
+  
+  return(p)
 }
 
 # NEW COMPREHENSIVE MULTI-PAGE REPORT FUNCTION
