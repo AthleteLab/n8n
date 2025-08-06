@@ -161,24 +161,24 @@ create_heatmaps_by_pitch <- function(data) {
     scale_color_manual(values = pitch_colors) +
     # Strike zone rectangle (Baseball Savant style)
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
-              fill = NA, color = "white", size = 1.2) +
+              fill = NA, color = "white", linewidth = 1.2) +
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
-              fill = NA, color = "black", size = 0.8) +
+              fill = NA, color = "black", linewidth = 0.8) +
     # Baseball Savant-style background and theming
-    facet_wrap(~ PitchType, scales = "free") +
+    facet_wrap(~ PitchType) +
     coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
     theme_dark() +
     theme(
       panel.background = element_rect(fill = "gray20"),
       plot.background = element_rect(fill = "gray15"),
-      panel.grid.major = element_line(color = "gray30", size = 0.3),
-      panel.grid.minor = element_line(color = "gray25", size = 0.2),
+      panel.grid.major = element_line(color = "gray30", linewidth = 0.3),
+      panel.grid.minor = element_line(color = "gray25", linewidth = 0.2),
       strip.background = element_rect(fill = "gray10"),
       strip.text = element_text(color = "white", face = "bold", size = 11),
       axis.text = element_text(color = "white", size = 9),
       axis.title = element_text(color = "white", size = 10),
       legend.position = "none",
-      panel.border = element_rect(color = "gray40", fill = NA, size = 0.5)
+      panel.border = element_rect(color = "gray40", fill = NA, linewidth = 0.5)
     ) +
     labs(title = "Location Heatmaps by Pitch Type",
          x = "Horizontal Location (feet)", 
