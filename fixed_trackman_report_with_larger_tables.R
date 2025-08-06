@@ -634,18 +634,10 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   total_pitches <- nrow(pitch_log)
   pitches_per_page <- 50
   
-  # Page 4A - Pitches 1-50 with PA separation
-  pitch_log_page1 <- pitch_log %>% 
-    slice(1:min(50, total_pitches)) %>%
-    mutate(
-      # Add visual marker for new PAs
-      `PA Marker` = ifelse(Count == "0-0" & `Pitch # in PA` == 1 & row_number() > 1, ">>> NEW PA <<<", ""),
-      # Reorder columns to put marker first for visibility
-      .before = 1
-    ) %>%
-    relocate(`PA Marker`, .before = `Pitch #`)
+  # Page 4A - Pitches 1-50 
+  pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
   
-  # Simplified table creation to avoid timeout
+  # Create table
   page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
                             theme = ttheme_default(
                               core = list(fg_params = list(cex = 0.95),
@@ -662,18 +654,11 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     heights = c(0.04, 6.96)  # Even smaller title, maximized table space
   )
   
-  # Page 4B - Pitches 51-100 (if they exist) with PA separation
+  # Page 4B - Pitches 51-100 (if they exist)
   if (total_pitches > 50) {
-    pitch_log_page2 <- pitch_log %>% 
-      slice(51:min(100, total_pitches)) %>%
-      mutate(
-        # Add visual marker for new PAs
-        `PA Marker` = ifelse(Count == "0-0" & `Pitch # in PA` == 1 & row_number() > 1, ">>> NEW PA <<<", ""),
-        .before = 1
-      ) %>%
-      relocate(`PA Marker`, .before = `Pitch #`)
+    pitch_log_page2 <- pitch_log %>% slice(51:min(100, total_pitches))
     
-    # Simplified table creation to avoid timeout
+    # Create table
     page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
                               theme = ttheme_default(
                                 core = list(fg_params = list(cex = 0.95),
