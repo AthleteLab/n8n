@@ -134,67 +134,52 @@ create_release_plot <- function(data) {
       .groups = 'drop'
     )
   
-  # Create realistic mound and pitcher's rubber
-  # Mound is regulation 18 feet in diameter, 10 inches high at center - make it circular
+  # Create realistic circular mound 
   mound_height <- 10/12  # 10 inches converted to feet (0.833 feet)
   
-  # Create circular mound using many points for smooth curve
-  n_points <- 24
-  angles <- seq(0, 2*pi, length.out = n_points + 1)[-1]  # Remove duplicate last point
-  mound_radius <- 1.5  # 18 feet diameter = 9 feet radius, scaled down
+  # Create circular mound - simple and realistic
+  n_points <- 32
+  angles <- seq(0, 2*pi, length.out = n_points + 1)[-1]
+  mound_radius <- 1.5
   
-  # Calculate heights based on distance from center (circular elevation)
-  distances <- abs(cos(angles)) + abs(sin(angles))  # Distance factor for elevation
-  heights <- pmax(0, mound_height * (1 - distances^1.2))  # Smooth falloff to edges
+  # Create realistic circular elevation profile
+  x_coords <- mound_radius * cos(angles)
+  y_coords <- mound_radius * sin(angles)
+  distances <- sqrt(x_coords^2 + y_coords^2) / mound_radius
+  heights <- mound_height * (1 - distances)^2  # Smooth quadratic falloff
   
-  mound_shape <- data.frame(
-    x = mound_radius * cos(angles),
+  # Create the mound surface
+  mound_surface <- data.frame(
+    x = x_coords,
     y = heights
   )
   
-  # Add base points around the mound
-  base_points <- data.frame(
-    x = (mound_radius + 0.2) * cos(angles),
-    y = rep(-0.1, n_points)
-  )
-  
-  # Combine top and base for complete mound shape
-  mound_shape <- rbind(mound_shape, base_points[nrow(base_points):1, ])
-  
-  # Pitcher's rubber (2 feet long, 4 inches wide) - embedded in the mound
-  rubber_length <- 2/2  # 2 feet converted to half-width for each side (1 foot each way)
+  # Pitcher's rubber (2 feet long, 4 inches wide) - recessed INTO the mound
+  rubber_length <- 1.0  # 2 feet total width = 1 foot each side from center
   rubber_width <- 4/12  # 4 inches converted to feet
+  rubber_height <- mound_height - 0.05  # Recessed into mound surface
+  
   pitcher_rubber <- data.frame(
     x = c(-rubber_length, rubber_length, rubber_length, -rubber_length),
-    y = c(mound_height - 0.02, mound_height - 0.02, mound_height - 0.02 + rubber_width, mound_height - 0.02 + rubber_width)  # Embedded in mound surface
+    y = c(rubber_height, rubber_height, rubber_height, rubber_height)  # Flat surface recessed in mound
   )
   
-  # Create the base release plot
+    # Create the base release plot
   release_plot <- ggplot(data, aes(x = RelSide, y = RelHeight, color = PitchType)) +
-    # Add realistic mound (dirt brown with gradient effect)
-    geom_polygon(data = mound_shape, aes(x = x, y = y), 
-                 fill = "#A0522D", color = "#8B4513", size = 1.2, 
-                 inherit.aes = FALSE, alpha = 0.9) +
-         # Add mound shading for 3D effect (circular top surface)
-     geom_polygon(data = data.frame(
-       x = 0.8 * cos(seq(0, 2*pi, length.out = 17)[-17]),
-       y = rep(mound_height * 0.9, 16)
-     ), aes(x = x, y = y), 
-     fill = "#CD853F", color = "#A0522D", size = 0.8, 
-     inherit.aes = FALSE, alpha = 0.7) +
-    # Add pitcher's rubber (white) embedded in mound
+    # Add realistic circular mound
+    geom_polygon(data = mound_surface, aes(x = x, y = y), 
+                 fill = "#8B4513", color = "#654321", size = 1, 
+                 inherit.aes = FALSE, alpha = 0.8) +
+    # Add pitcher's rubber recessed INTO the mound
     geom_polygon(data = pitcher_rubber, aes(x = x, y = y), 
-                 fill = "white", color = "black", size = 1.8, 
+                 fill = "white", color = "black", size = 2, 
                  inherit.aes = FALSE) +
     # Add points for release locations
     geom_point(alpha = 0.7, size = 2) +
     scale_color_manual(values = pitch_colors) +
     coord_fixed(xlim = c(-2.5, 2.5), ylim = c(-0.5, 7.5)) +
     theme_minimal() +
-    labs(title = "Release Point", subtitle = "Pitcher View") +
-         # Add mound label
-     annotate("text", x = 1.8, y = 1.0, label = "Pitcher's Mound", 
-              color = "#8B4513", fontface = "bold", size = 3.5)
+    labs(title = "Release Point", subtitle = "Pitcher View")
   
   # Add arm angle information if available
   if ("ArmAngle" %in% names(data) && any(!is.na(data$ArmAngle))) {
@@ -204,7 +189,7 @@ create_release_plot <- function(data) {
       mutate(
                  # Create line segments from center of rubber to release point
          x_start = 0,
-         y_start = mound_height - 0.02 + rubber_width/2,  # Center of embedded rubber
+         y_start = rubber_height,  # Center of recessed rubber
          x_end = avg_rel_side,
          y_end = avg_rel_height
       )
