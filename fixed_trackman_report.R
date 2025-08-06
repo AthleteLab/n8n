@@ -522,18 +522,27 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     group_by(Pitcher, `PA #`) %>%
     arrange(Pitcher, `PA #`, `Pitch # in PA`) %>%
     mutate(
-      # Determine if this pitch is a ball or strike based on Result
+      # Determine if this pitch is a ball based on Result
       Is_Ball = case_when(
         grepl("Ball|Hit By Pitch", Result, ignore.case = TRUE) ~ 1,
         TRUE ~ 0
       ),
-      Is_Strike = case_when(
+      # Simple approach: Calculate strikes first, then handle fouls
+      Temp_Strike = case_when(
         grepl("Called Strike|Swinging Strike", Result, ignore.case = TRUE) ~ 1,
-        grepl("Foul", Result, ignore.case = TRUE) & lag(cumsum(Is_Strike), default = 0) < 2 ~ 1,
-        grepl("Foul", Result, ignore.case = TRUE) & lag(cumsum(Is_Strike), default = 0) >= 2 ~ 0,
+        grepl("Foul", Result, ignore.case = TRUE) ~ 1,
         TRUE ~ 0
       ),
-      # Calculate running count within PA
+      # Calculate cumulative strikes up to previous pitch
+      Cum_Strikes_Prev = lag(cumsum(Temp_Strike), default = 0),
+      # Now determine if current pitch actually counts as a strike (handle 2-strike fouls)
+      Is_Strike = case_when(
+        grepl("Called Strike|Swinging Strike", Result, ignore.case = TRUE) ~ 1,
+        grepl("Foul", Result, ignore.case = TRUE) & Cum_Strikes_Prev < 2 ~ 1,
+        grepl("Foul", Result, ignore.case = TRUE) & Cum_Strikes_Prev >= 2 ~ 0,
+        TRUE ~ 0
+      ),
+      # Calculate running count for display (what count was BEFORE this pitch)
       Running_Balls = lag(cumsum(Is_Ball), default = 0),
       Running_Strikes = lag(cumsum(Is_Strike), default = 0),
       # Create Count string - ALWAYS starts at 0-0 for first pitch in PA
