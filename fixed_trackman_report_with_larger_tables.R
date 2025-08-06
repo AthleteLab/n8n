@@ -133,48 +133,25 @@ create_velocity_plot <- function(data) {
 }
 
 create_heatmaps_by_pitch <- function(data) {
-  # Count pitches by type to determine visualization method
-  pitch_counts <- data %>%
-    group_by(PitchType) %>%
-    summarise(count = n(), .groups = 'drop')
-  
-  # Filter out pitch types with insufficient data to prevent errors
+  # Super simple and fast - just points with strike zone
   data_clean <- data %>%
-    left_join(pitch_counts, by = "PitchType") %>%
-    filter(count >= 2 & !is.na(PlateLocSide) & !is.na(PlateLocHeight))
+    filter(!is.na(PlateLocSide) & !is.na(PlateLocHeight) & !is.na(PitchType))
   
   if(nrow(data_clean) == 0) {
-    # Return simple plot if no valid data
     return(ggplot() + theme_void() + labs(title = "No valid location data"))
   }
   
-  # Create simplified Baseball Savant-style plot
-  p <- ggplot(data_clean, aes(x = PlateLocSide, y = PlateLocHeight))
-  
-  # Add simple density contours for pitch types with 5+ pitches
-  data_with_heatmap <- data_clean %>% filter(count >= 5)
-  
-  if(nrow(data_with_heatmap) > 0) {
-    # Simplified density contours to prevent timeout
-    p <- p + geom_density_2d(data = data_with_heatmap, 
-                             aes(color = PitchType), 
-                             alpha = 0.6, linewidth = 1)
-  }
-  
-  # Add points for all pitch types
-  p <- p + 
-    geom_point(aes(color = PitchType), alpha = 0.8, size = 1.5) +
+  # Simple scatter plot - no density calculations to avoid timeout
+  ggplot(data_clean, aes(x = PlateLocSide, y = PlateLocHeight, color = PitchType)) +
+    geom_point(alpha = 0.7, size = 2) +
     scale_color_manual(values = pitch_colors) +
-    # Simple strike zone
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black", linewidth = 1) +
     facet_wrap(~ PitchType) +
-    coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
+    xlim(-2.5, 2.5) + ylim(0, 5) +
     theme_minimal() +
     theme(legend.position = "none") +
-    labs(title = "Location Heatmaps by Pitch Type")
-  
-  return(p)
+    labs(title = "Location by Pitch Type", x = "Horizontal (ft)", y = "Vertical (ft)")
 }
 
 # NEW COMPREHENSIVE MULTI-PAGE REPORT FUNCTION
