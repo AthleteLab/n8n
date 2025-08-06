@@ -186,9 +186,10 @@ create_heatmaps_by_pitch <- function(data) {
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black", linewidth = 0.8) +
     # Home plate
-    geom_polygon(aes(x = c(-0.83/2, 0.83/2, 0.83/2, 0, -0.83/2), 
-                     y = c(0.15, 0.15, 0.3, 0.5, 0.3)), 
-                 fill = "white", color = "black", linewidth = 1) +
+    geom_polygon(data = data.frame(x = c(-0.83/2, 0.83/2, 0.83/2, 0, -0.83/2), 
+                                   y = c(0.15, 0.15, 0.3, 0.5, 0.3)),
+                 aes(x = x, y = y), 
+                 fill = "white", color = "black", linewidth = 1, inherit.aes = FALSE) +
     facet_wrap(~ PitchType) +
     xlim(-2.5, 2.5) + ylim(0, 5) +
     theme_void() +
