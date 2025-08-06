@@ -509,8 +509,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       # Extract pitch_number if available, otherwise use ThroughOrder
       pitch_order = if("pitch_number" %in% names(.)) pitch_number else ThroughOrder
     ) %>%
-    # Sort by: pitcher, game_date, game_pk, at_bat_number, then pitch_number (ascending)
-    arrange(Pitcher, game_datetime, GamePK, PA_UID, pitch_order) %>%
+    # Sort by: pitcher, game_date, game_pk, inning, at_bat_number, then pitch_number (ascending)
+    arrange(Pitcher, game_datetime, GamePK, Inning, PA_UID, pitch_order) %>%
     group_by(Pitcher) %>%
     mutate(
       # Global pitch number for this pitcher
@@ -521,16 +521,16 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       # PA number within this game for this pitcher
       `PA #` = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)]))
     ) %>%
-    group_by(Pitcher, PA_UID) %>%
-    arrange(Pitcher, PA_UID, pitch_order) %>%
-    mutate(
-      # Pitch number within this specific PA
-      `Pitch # in PA` = row_number()
-    ) %>%
-    ungroup() %>%
-    # CRITICAL: Recalculate Count from scratch based on pitch description
-    group_by(Pitcher, PA_UID) %>%
-    arrange(Pitcher, PA_UID, pitch_order) %>%
+         group_by(Pitcher, PA_UID) %>%
+     arrange(Pitcher, Inning, PA_UID, pitch_order) %>%
+     mutate(
+       # Pitch number within this specific PA
+       `Pitch # in PA` = row_number()
+     ) %>%
+     ungroup() %>%
+     # CRITICAL: Recalculate Count from scratch based on pitch description
+     group_by(Pitcher, PA_UID) %>%
+     arrange(Pitcher, Inning, PA_UID, pitch_order) %>%
     mutate(
       # Determine if this pitch is a ball based on description
       Is_Ball = case_when(
@@ -559,8 +559,8 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
       )
     ) %>%
     ungroup() %>%
-    # Recalculate global PA numbers across all games
-    arrange(Pitcher, game_datetime, GamePK, PA_UID, pitch_order) %>%
+         # Recalculate global PA numbers across all games
+     arrange(Pitcher, game_datetime, GamePK, Inning, PA_UID, pitch_order) %>%
     group_by(Pitcher) %>%
     mutate(
       # Global pitch number (recalculated after final sort)
@@ -589,10 +589,21 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
            `Release Height`, `Release Side`, Extension, Result) %>%
     slice_head(n = 50)  # Limit for display
   
+  # Debug: Check what innings we have in the data
+  print("Available innings in the data:")
+  print(sort(unique(pitcher_data$Inning)))
+  
+  print("First 10 rows with inning info:")
+  debug_innings <- pitcher_data %>%
+    arrange(game_datetime, GamePK, Inning, ThroughOrder) %>%
+    select(GamePK, Inning, ThroughOrder, PitchType, Result) %>%
+    slice_head(n = 10)
+  print(debug_innings)
+  
   # Debug: Print first 3 PAs to verify correct count progression
   debug_pas <- pitch_log %>%
     filter(`PA #` <= 3) %>%
-    select(`Pitch #`, `PA #`, `Pitch # in PA`, Count, `Pitch Type`, Result)
+    select(`Pitch #`, `PA #`, `Pitch # in PA`, Inning, Count, `Pitch Type`, Result)
   
   print("First 3 PAs for debugging:")
   print(debug_pas)
