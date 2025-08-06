@@ -637,16 +637,30 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   # Page 4A - Pitches 1-50 
   pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
   
-  # Create table
-  page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
-                            theme = ttheme_default(
-                              core = list(fg_params = list(cex = 0.95),
-                                          bg_params = list(fill = c("white", "grey95")),
-                                          padding = unit(c(3, 2), "mm")),
-                              colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
-                                             bg_params = list(fill = "lightblue"),
-                                             padding = unit(c(3, 2), "mm"))
-                            ))
+  # Create table with bold lines for PA separation
+  # Identify new PA rows
+  new_pa_rows <- which(pitch_log_page1$Count == "0-0" & pitch_log_page1$`Pitch # in PA` == 1)
+  new_pa_rows <- new_pa_rows[new_pa_rows > 1]  # Skip first row
+  
+  # Create custom theme with bold borders
+  custom_theme <- ttheme_default(
+    core = list(fg_params = list(cex = 0.95),
+                bg_params = list(fill = c("white", "grey95")),
+                padding = unit(c(3, 2), "mm")),
+    colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
+                   bg_params = list(fill = "lightblue"),
+                   padding = unit(c(3, 2), "mm"))
+  )
+  
+  # Add bold top borders for new PA rows
+  if(length(new_pa_rows) > 0) {
+    for(row in new_pa_rows) {
+      custom_theme$core$bg_params$border.top <- "black"
+      custom_theme$core$bg_params$border.top.size <- 2
+    }
+  }
+  
+  page4a_table <- tableGrob(pitch_log_page1, rows = NULL, theme = custom_theme)
   
   page4a <- grid.arrange(
     textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
@@ -658,16 +672,30 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   if (total_pitches > 50) {
     pitch_log_page2 <- pitch_log %>% slice(51:min(100, total_pitches))
     
-    # Create table
-    page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
-                              theme = ttheme_default(
-                                core = list(fg_params = list(cex = 0.95),
-                                            bg_params = list(fill = c("white", "grey95")),
-                                            padding = unit(c(3, 2), "mm")),
-                                colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
-                                               bg_params = list(fill = "lightblue"),
-                                               padding = unit(c(3, 2), "mm"))
-                              ))
+    # Create table with bold lines for PA separation
+    # Identify new PA rows
+    new_pa_rows_4b <- which(pitch_log_page2$Count == "0-0" & pitch_log_page2$`Pitch # in PA` == 1)
+    new_pa_rows_4b <- new_pa_rows_4b[new_pa_rows_4b > 1]  # Skip first row
+    
+    # Create custom theme with bold borders
+    custom_theme_4b <- ttheme_default(
+      core = list(fg_params = list(cex = 0.95),
+                  bg_params = list(fill = c("white", "grey95")),
+                  padding = unit(c(3, 2), "mm")),
+      colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
+                     bg_params = list(fill = "lightblue"),
+                     padding = unit(c(3, 2), "mm"))
+    )
+    
+    # Add bold top borders for new PA rows
+    if(length(new_pa_rows_4b) > 0) {
+      for(row in new_pa_rows_4b) {
+        custom_theme_4b$core$bg_params$border.top <- "black"
+        custom_theme_4b$core$bg_params$border.top.size <- 2
+      }
+    }
+    
+    page4b_table <- tableGrob(pitch_log_page2, rows = NULL, theme = custom_theme_4b)
     
     page4b <- grid.arrange(
       textGrob(paste("Page 4B - Pitches 51-100:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
