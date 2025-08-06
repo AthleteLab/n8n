@@ -663,6 +663,19 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     }
   }
   
+  # Add thin vertical lines between columns
+  num_cols <- ncol(pitch_log_page1)
+  if(num_cols > 1) {
+    for(col_idx in 2:num_cols) {
+      # Add vertical line between columns (thinner than horizontal lines)
+      vert_line_grob <- segmentsGrob(x0 = 0, x1 = 0, y0 = 0, y1 = 1, 
+                                     gp = gpar(lwd = 1.5, col = "black"))
+      page4a_table <- gtable_add_grob(page4a_table, vert_line_grob, 
+                                      t = 1, b = nrow(page4a_table), 
+                                      l = col_idx, r = col_idx)
+    }
+  }
+  
   page4a <- grid.arrange(
     textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
     page4a_table,
@@ -696,6 +709,19 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
         page4b_table <- gtable_add_grob(page4b_table, line_grob, 
                                         t = row_idx + 1, b = row_idx + 1, 
                                         l = 1, r = ncol(page4b_table))
+      }
+    }
+    
+    # Add thin vertical lines between columns
+    num_cols_4b <- ncol(pitch_log_page2)
+    if(num_cols_4b > 1) {
+      for(col_idx in 2:num_cols_4b) {
+        # Add vertical line between columns (thinner than horizontal lines)
+        vert_line_grob <- segmentsGrob(x0 = 0, x1 = 0, y0 = 0, y1 = 1, 
+                                       gp = gpar(lwd = 1.5, col = "black"))
+        page4b_table <- gtable_add_grob(page4b_table, vert_line_grob, 
+                                        t = 1, b = nrow(page4b_table), 
+                                        l = col_idx, r = col_idx)
       }
     }
     
