@@ -133,8 +133,27 @@ create_velocity_plot <- function(data) {
 }
 
 create_heatmaps_by_pitch <- function(data) {
-  ggplot(data, aes(x = PlateLocSide, y = PlateLocHeight)) +
-    geom_density_2d_filled(alpha = 0.7) +
+  # Count pitches by type to determine visualization method
+  pitch_counts <- data %>%
+    group_by(PitchType) %>%
+    summarise(count = n(), .groups = 'drop')
+  
+  # Create base plot
+  p <- ggplot(data, aes(x = PlateLocSide, y = PlateLocHeight))
+  
+  # Add heatmaps only for pitch types with 5+ pitches
+  data_with_heatmap <- data %>%
+    left_join(pitch_counts, by = "PitchType") %>%
+    filter(count >= 5)
+  
+  if(nrow(data_with_heatmap) > 0) {
+    p <- p + geom_density_2d_filled(data = data_with_heatmap, alpha = 0.5)
+  }
+  
+  # Add points for all pitch types (essential for <5 pitches, overlay for 5+)
+  p <- p + 
+    geom_point(aes(color = PitchType), alpha = 0.8, size = 2) +
+    scale_color_manual(values = pitch_colors) +
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black", size = 1) +
     facet_wrap(~ PitchType) +
@@ -142,6 +161,8 @@ create_heatmaps_by_pitch <- function(data) {
     theme_minimal() +
     labs(title = "Location Heatmaps by Pitch Type") +
     theme(legend.position = "none")
+  
+  return(p)
 }
 
 # NEW COMPREHENSIVE MULTI-PAGE REPORT FUNCTION
@@ -613,25 +634,22 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   total_pitches <- nrow(pitch_log)
   pitches_per_page <- 50
   
-  # Page 4A - Pitches 1-50 with PA separation lines
-  pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
-  
-  # Add visual separator for new PAs by modifying background colors
-  pitch_log_page1 <- pitch_log_page1 %>%
+  # Page 4A - Pitches 1-50 with PA separation
+  pitch_log_page1 <- pitch_log %>% 
+    slice(1:min(50, total_pitches)) %>%
     mutate(
-      is_new_pa = (Count == "0-0" & `Pitch # in PA` == 1),
-      row_color = case_when(
-        is_new_pa & row_number() > 1 ~ "lightcyan",  # Highlight new PAs with different color
-        row_number() %% 2 == 0 ~ "grey95",           # Even rows
-        TRUE ~ "white"                               # Odd rows
-      )
-    )
+      # Add visual marker for new PAs
+      `PA Marker` = ifelse(Count == "0-0" & `Pitch # in PA` == 1 & row_number() > 1, ">>> NEW PA <<<", ""),
+      # Reorder columns to put marker first for visibility
+      .before = 1
+    ) %>%
+    relocate(`PA Marker`, .before = `Pitch #`)
   
-  # Create table with custom row colors for PA separation
-  page4a_table <- tableGrob(pitch_log_page1 %>% select(-is_new_pa, -row_color), rows = NULL, 
+  # Simplified table creation to avoid timeout
+  page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
                             theme = ttheme_default(
                               core = list(fg_params = list(cex = 0.95),
-                                          bg_params = list(fill = pitch_log_page1$row_color),
+                                          bg_params = list(fill = c("white", "grey95")),
                                           padding = unit(c(3, 2), "mm")),
                               colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
                                              bg_params = list(fill = "lightblue"),
@@ -644,25 +662,22 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     heights = c(0.04, 6.96)  # Even smaller title, maximized table space
   )
   
-  # Page 4B - Pitches 51-100 (if they exist) with PA separation lines
+  # Page 4B - Pitches 51-100 (if they exist) with PA separation
   if (total_pitches > 50) {
-    pitch_log_page2 <- pitch_log %>% slice(51:min(100, total_pitches))
-    
-    # Add visual separator for new PAs by modifying background colors
-    pitch_log_page2 <- pitch_log_page2 %>%
+    pitch_log_page2 <- pitch_log %>% 
+      slice(51:min(100, total_pitches)) %>%
       mutate(
-        is_new_pa = (Count == "0-0" & `Pitch # in PA` == 1),
-        row_color = case_when(
-          is_new_pa & row_number() > 1 ~ "lightcyan",  # Highlight new PAs with different color
-          row_number() %% 2 == 0 ~ "grey95",           # Even rows
-          TRUE ~ "white"                               # Odd rows
-        )
-      )
+        # Add visual marker for new PAs
+        `PA Marker` = ifelse(Count == "0-0" & `Pitch # in PA` == 1 & row_number() > 1, ">>> NEW PA <<<", ""),
+        .before = 1
+      ) %>%
+      relocate(`PA Marker`, .before = `Pitch #`)
     
-    page4b_table <- tableGrob(pitch_log_page2 %>% select(-is_new_pa, -row_color), rows = NULL, 
+    # Simplified table creation to avoid timeout
+    page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
                               theme = ttheme_default(
                                 core = list(fg_params = list(cex = 0.95),
-                                            bg_params = list(fill = pitch_log_page2$row_color),
+                                            bg_params = list(fill = c("white", "grey95")),
                                             padding = unit(c(3, 2), "mm")),
                                 colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
                                                bg_params = list(fill = "lightblue"),
