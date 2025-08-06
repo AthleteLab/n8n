@@ -61,7 +61,7 @@ pitch_colors <- c(
   "CT" = "darkgreen", 
   "CH" = "blue",
   "SP" = "lightblue",
-  "SL" = "yellow",
+  "SL" = "darkgoldenrod",
   "SW" = "orange",
   "CB" = "red"
 )
