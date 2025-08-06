@@ -112,14 +112,134 @@ create_release_plot <- function(data) {
 }
 
 create_tilt_plot <- function(data) {
-  # Simplified tilt plot
+  # Create smaller clock face
   clock_face <- create_circle(radius = 0.8)
   
-  ggplot() +
-    geom_polygon(data = clock_face, aes(x = x, y = y), fill = "gray95", color = "black") +
+  # Numbers inside the clock face - 12 at top, going clockwise
+  clock_angles <- seq(0, 2*pi, length.out = 13)[-13]  # 12 positions
+  clock_angles <- -clock_angles + pi/2  # Rotate so 12 is at top and reverse direction for clockwise
+  
+  clock_labels <- data.frame(
+    x = 0.65 * cos(clock_angles),
+    y = 0.65 * sin(clock_angles),
+    label = c("12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")
+  )
+  
+  # Create tilt density data around the clock
+  if ("SpinAxis" %in% names(data)) {
+    # Create density polygons for each pitch type
+    tilt_density_data <- data %>%
+      filter(!is.na(SpinAxis)) %>%
+      mutate(
+        normalized_spin = (SpinAxis + 360) %% 360,
+        # Convert to clock decimal for density calculation
+        clock_decimal = (normalized_spin / 30 + 6) %% 12,
+        clock_decimal = ifelse(clock_decimal == 0, 12, clock_decimal)
+      )
+    
+    # Create density curves for each pitch type
+    tilt_polygons <- list()
+    
+    for(pitch in unique(tilt_density_data$PitchType)) {
+      pitch_data <- tilt_density_data %>% filter(PitchType == pitch)
+      
+      if(nrow(pitch_data) > 1) {
+        # Create circular density
+        dens <- density(pitch_data$clock_decimal, bw = 0.3, from = 0, to = 12, n = 100)
+        
+        # Extend density to wrap around (connect 12 to 0)
+        clock_positions <- c(dens$x, dens$x[1] + 12)
+        densities <- c(dens$y, dens$y[1])
+        
+        # Convert clock positions to angles (same as corrected clock)
+        angles <- (clock_positions - 3) * 30  # 3:00 = 0°, 12:00 = 270°
+        
+        # Normalize density to reasonable size
+        max_dens <- max(densities)
+        densities <- densities / max_dens * 0.3  # Scale to max 0.3 units from clock edge
+        
+        # Create polygon points
+        inner_radius <- 0.8
+        outer_radius <- inner_radius + densities
+        
+        # Convert to x,y coordinates (negative theta for clockwise)
+        theta_rad <- angles * pi / 180
+        
+        # Create polygon (inner edge + outer edge)
+        polygon_data <- data.frame(
+          x = c(inner_radius * cos(-theta_rad), rev(outer_radius * cos(-theta_rad))),
+          y = c(inner_radius * sin(-theta_rad), rev(outer_radius * sin(-theta_rad))),
+          PitchType = pitch
+        )
+        
+        tilt_polygons[[pitch]] <- polygon_data
+      }
+    }
+    
+    # Combine all polygons
+    if(length(tilt_polygons) > 0) {
+      tilt_density_polygons <- do.call(rbind, tilt_polygons)
+    } else {
+      tilt_density_polygons <- NULL
+    }
+    
+    # Calculate average arm angle for each pitch type
+    if ("ArmAngle" %in% names(data)) {
+      arm_angle_lines <- tilt_density_data %>%
+        group_by(PitchType) %>%
+        summarise(avg_arm_angle = mean(ArmAngle, na.rm = TRUE), .groups = 'drop') %>%
+        filter(!is.na(avg_arm_angle)) %>%
+        mutate(
+          # Convert arm angle to radians (0° = right, 90° = up)
+          theta = avg_arm_angle * pi / 180,
+          # Create line from center to clock edge
+          x_start = 0,
+          y_start = 0,
+          x_end = 0.75 * cos(theta),  # Stop just short of clock edge
+          y_end = 0.75 * sin(theta)
+        )
+    } else {
+      arm_angle_lines <- NULL
+    }
+  } else {
+    tilt_density_polygons <- NULL
+    arm_angle_lines <- NULL
+  }
+  
+  tilt_plot <- ggplot() +
+    # Clock face background (light gray fill)
+    geom_polygon(data = clock_face, aes(x = x, y = y), fill = "gray95", color = "black", linewidth = 1) +
+    # Hour marks (small lines from edge toward center)
+    geom_segment(aes(x = 0.8 * cos(clock_angles),
+                     y = 0.8 * sin(clock_angles),
+                     xend = 0.7 * cos(clock_angles),
+                     yend = 0.7 * sin(clock_angles)),
+                 color = "black", linewidth = 0.5) +
+    # Clock numbers inside
+    geom_text(data = clock_labels, aes(x = x, y = y, label = label), size = 4, fontface = "bold") +
+    # Average arm angle lines for each pitch type
+    {
+      if (!is.null(arm_angle_lines) && nrow(arm_angle_lines) > 0) {
+        geom_segment(data = arm_angle_lines, aes(x = x_start, y = y_start, xend = x_end, yend = y_end, color = PitchType), 
+                     linewidth = 2, alpha = 0.8)
+      }
+    } +
+    # Density polygons around the edge
+    {
+      if (!is.null(tilt_density_polygons) && nrow(tilt_density_polygons) > 0) {
+        geom_polygon(data = tilt_density_polygons, aes(x = x, y = y, fill = PitchType), alpha = 0.6)
+      }
+    } +
+    scale_color_manual(values = pitch_colors) +
+    scale_fill_manual(values = pitch_colors) +
     coord_fixed(xlim = c(-1.2, 1.2), ylim = c(-1.2, 1.2)) +
     theme_void() +
-    labs(title = "Tilt Consistency")
+    labs(title = "Tilt Consistency") +
+    theme(plot.title = element_text(hjust = 0.5, size = 16),
+          plot.margin = margin(10, 10, 10, 10),
+          legend.position = "none")
+  
+  return(tilt_plot)
 }
 
 create_velocity_plot <- function(data) {
