@@ -6,6 +6,7 @@ library(gridExtra)
 library(scales)    # For color scales
 library(cowplot)  # For plot composition
 library(grid)     # For textGrob and gpar
+library(gtable)   # For table modifications
 
 # Function to convert spin axis to clock face tilt
 spin_to_tilt <- function(spin_axis) {
@@ -615,28 +616,27 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   # Page 4A - Pitches 1-50 with PA separation lines
   pitch_log_page1 <- pitch_log %>% slice(1:min(50, total_pitches))
   
-  # Create custom theme with PA separation lines
-  page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
-                            theme = ttheme_default(
-                              core = list(fg_params = list(cex = 0.95),  # Slightly smaller to prevent cutoff
-                                          bg_params = list(fill = c("white", "grey95")),
-                                          padding = unit(c(3, 2), "mm")),  # Reduced padding to fit better
-                              colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),  # Smaller headers
-                                             bg_params = list(fill = "lightblue"),
-                                             padding = unit(c(3, 2), "mm"))  # Reduced header padding
-                            ))
+  # Add visual separator for new PAs by modifying background colors
+  pitch_log_page1 <- pitch_log_page1 %>%
+    mutate(
+      is_new_pa = (Count == "0-0" & `Pitch # in PA` == 1),
+      row_color = case_when(
+        is_new_pa & row_number() > 1 ~ "lightcyan",  # Highlight new PAs with different color
+        row_number() %% 2 == 0 ~ "grey95",           # Even rows
+        TRUE ~ "white"                               # Odd rows
+      )
+    )
   
-  # Add horizontal lines above each new PA (0-0 count rows)
-  new_pa_rows <- which(pitch_log_page1$Count == "0-0" & pitch_log_page1$`Pitch # in PA` == 1)
-  if(length(new_pa_rows) > 0) {
-    # Add thick horizontal lines above new PAs (skip first row since it's already at top)
-    for(row in new_pa_rows[new_pa_rows > 1]) {
-      page4a_table <- gtable_add_grob(page4a_table, 
-                                      segmentsGrob(x0 = 0, x1 = 1, y0 = 0.5, y1 = 0.5, 
-                                                   gp = gpar(lwd = 2, col = "black")),
-                                      t = row, l = 1, r = ncol(page4a_table))
-    }
-  }
+  # Create table with custom row colors for PA separation
+  page4a_table <- tableGrob(pitch_log_page1 %>% select(-is_new_pa, -row_color), rows = NULL, 
+                            theme = ttheme_default(
+                              core = list(fg_params = list(cex = 0.95),
+                                          bg_params = list(fill = pitch_log_page1$row_color),
+                                          padding = unit(c(3, 2), "mm")),
+                              colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
+                                             bg_params = list(fill = "lightblue"),
+                                             padding = unit(c(3, 2), "mm"))
+                            ))
   
   page4a <- grid.arrange(
     textGrob(paste("Page 4A - Pitches 1-50:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
@@ -648,27 +648,26 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   if (total_pitches > 50) {
     pitch_log_page2 <- pitch_log %>% slice(51:min(100, total_pitches))
     
-    page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
-                              theme = ttheme_default(
-                                core = list(fg_params = list(cex = 0.95),  # Slightly smaller to prevent cutoff
-                                            bg_params = list(fill = c("white", "grey95")),
-                                            padding = unit(c(3, 2), "mm")),  # Reduced padding to fit better
-                                colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),  # Smaller headers
-                                               bg_params = list(fill = "lightblue"),
-                                               padding = unit(c(3, 2), "mm"))  # Reduced header padding
-                              ))
+    # Add visual separator for new PAs by modifying background colors
+    pitch_log_page2 <- pitch_log_page2 %>%
+      mutate(
+        is_new_pa = (Count == "0-0" & `Pitch # in PA` == 1),
+        row_color = case_when(
+          is_new_pa & row_number() > 1 ~ "lightcyan",  # Highlight new PAs with different color
+          row_number() %% 2 == 0 ~ "grey95",           # Even rows
+          TRUE ~ "white"                               # Odd rows
+        )
+      )
     
-    # Add horizontal lines above each new PA (0-0 count rows) for page 4B
-    new_pa_rows_4b <- which(pitch_log_page2$Count == "0-0" & pitch_log_page2$`Pitch # in PA` == 1)
-    if(length(new_pa_rows_4b) > 0) {
-      # Add thick horizontal lines above new PAs (skip first row since it's already at top)
-      for(row in new_pa_rows_4b[new_pa_rows_4b > 1]) {
-        page4b_table <- gtable_add_grob(page4b_table, 
-                                        segmentsGrob(x0 = 0, x1 = 1, y0 = 0.5, y1 = 0.5, 
-                                                     gp = gpar(lwd = 2, col = "black")),
-                                        t = row, l = 1, r = ncol(page4b_table))
-      }
-    }
+    page4b_table <- tableGrob(pitch_log_page2 %>% select(-is_new_pa, -row_color), rows = NULL, 
+                              theme = ttheme_default(
+                                core = list(fg_params = list(cex = 0.95),
+                                            bg_params = list(fill = pitch_log_page2$row_color),
+                                            padding = unit(c(3, 2), "mm")),
+                                colhead = list(fg_params = list(cex = 0.95, fontface = "bold"),
+                                               bg_params = list(fill = "lightblue"),
+                                               padding = unit(c(3, 2), "mm"))
+                              ))
     
     page4b <- grid.arrange(
       textGrob(paste("Page 4B - Pitches 51-100:", pitcher_name), gp = gpar(fontsize = 14, fontface = "bold")),
