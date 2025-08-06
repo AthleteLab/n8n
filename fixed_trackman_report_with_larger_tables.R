@@ -178,7 +178,7 @@ create_heatmaps_by_pitch <- function(data) {
     geom_density_2d_filled(alpha = 0.7, bins = 6) +
     scale_fill_manual(values = c("white", "#ffcccc", "#ff9999", "#ff6666", "#ff3333", "#cc0000")) +
     # Add original points on top
-    geom_point(data = data_clean, aes(color = PitchType), alpha = 0.8, size = 1.5) +
+    geom_point(data = data_clean, aes(color = PitchType), alpha = 0.8, size = 4.5) +
     scale_color_manual(values = pitch_colors) +
     # Strike zone (flipped coordinates)
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
