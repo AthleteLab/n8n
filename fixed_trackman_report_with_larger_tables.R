@@ -168,8 +168,8 @@ create_heatmaps_by_pitch <- function(data) {
   
   # Add contour heatmaps for all pitch types (now they all have enough data)
   p <- p + 
-    geom_density_2d_filled(alpha = 0.6, bins = 6) +
-    scale_fill_viridis_d(option = "plasma", alpha = 0.7) +
+    geom_density_2d_filled(alpha = 0.7, bins = 6) +
+    scale_fill_manual(values = c("white", "#ffcccc", "#ff9999", "#ff6666", "#ff3333", "#cc0000")) +
     # Add original points on top
     geom_point(data = data_clean, aes(color = PitchType), alpha = 0.8, size = 1.5) +
     scale_color_manual(values = pitch_colors) +
