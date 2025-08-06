@@ -163,6 +163,13 @@ create_heatmaps_by_pitch <- function(data) {
     }) %>%
     ungroup()
   
+  # Flip x-coordinates for pitcher's view
+  data_augmented <- data_augmented %>%
+    mutate(PlateLocSide = -PlateLocSide)
+  
+  data_clean <- data_clean %>%
+    mutate(PlateLocSide = -PlateLocSide)
+  
   # Create plot with contours
   p <- ggplot(data_augmented, aes(x = PlateLocSide, y = PlateLocHeight))
   
@@ -173,16 +180,24 @@ create_heatmaps_by_pitch <- function(data) {
     # Add original points on top
     geom_point(data = data_clean, aes(color = PitchType), alpha = 0.8, size = 1.5) +
     scale_color_manual(values = pitch_colors) +
-    # Strike zone
+    # Strike zone (flipped coordinates)
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "white", linewidth = 1.2) +
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
               fill = NA, color = "black", linewidth = 0.8) +
+    # Home plate
+    geom_polygon(aes(x = c(-0.83/2, 0.83/2, 0.83/2, 0, -0.83/2), 
+                     y = c(0.15, 0.15, 0.3, 0.5, 0.3)), 
+                 fill = "white", color = "black", linewidth = 1) +
     facet_wrap(~ PitchType) +
     xlim(-2.5, 2.5) + ylim(0, 5) +
-    theme_minimal() +
-    theme(legend.position = "none") +
-    labs(title = "Location Heatmaps by Pitch Type", x = "Horizontal (ft)", y = "Vertical (ft)")
+    theme_void() +
+    theme(
+      legend.position = "none",
+      strip.text = element_text(size = 11, face = "bold"),
+      plot.title = element_text(size = 14, hjust = 0.5)
+    ) +
+    labs(title = "Location Heatmaps by Pitch Type (Pitcher's View)")
   
   return(p)
 }
