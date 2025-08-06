@@ -500,53 +500,78 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   # Create proper PA identifiers and ensure correct chronological ordering
   pitch_log <- pitcher_data %>%
     mutate(
-      # Create unique PA identifier using game_pk + pitcher + batter + n_priorpa_thisgame_player_at_bat
-      PA_UID = paste(GamePK, Pitcher, Batter, PriorPA, sep = "_")
+      # Create unique PA identifier using pitcher + game_pk + at_bat_number
+      PA_UID = paste(Pitcher, GamePK, if("at_bat_number" %in% names(.)) at_bat_number else PriorPA, sep = "_"),
+      # Extract description for count calculation
+      pitch_description = if("description" %in% names(.)) description else Result,
+      # Extract events for terminal detection
+      pitch_events = if("events" %in% names(.)) events else Result,
+      # Extract pitch_number if available, otherwise use ThroughOrder
+      pitch_order = if("pitch_number" %in% names(.)) pitch_number else ThroughOrder
     ) %>%
-    # CRITICAL: Sort by pitcher, game_date, game_pk, PA identifier, then n_thruorder_pitcher (ASCENDING)
-    arrange(Pitcher, game_datetime, GamePK, PA_UID, ThroughOrder) %>%
+    # Sort by: pitcher, game_date, game_pk, at_bat_number, then pitch_number (ascending)
+    arrange(Pitcher, game_datetime, GamePK, PA_UID, pitch_order) %>%
     group_by(Pitcher) %>%
     mutate(
       # Global pitch number for this pitcher
-      `Pitch #` = row_number(),
-      # Create sequential PA numbers based on PA_UID changes
+      `Pitch #` = row_number()
+    ) %>%
+    group_by(Pitcher, GamePK) %>%
+    mutate(
+      # PA number within this game for this pitcher
       `PA #` = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)]))
     ) %>%
-    group_by(Pitcher, `PA #`) %>%
+    group_by(Pitcher, PA_UID) %>%
+    arrange(Pitcher, PA_UID, pitch_order) %>%
     mutate(
       # Pitch number within this specific PA
       `Pitch # in PA` = row_number()
     ) %>%
     ungroup() %>%
-    # CRITICAL: Recalculate balls and strikes from scratch based on pitch results
-    group_by(Pitcher, `PA #`) %>%
-    arrange(Pitcher, `PA #`, `Pitch # in PA`) %>%
+    # CRITICAL: Recalculate Count from scratch based on pitch description
+    group_by(Pitcher, PA_UID) %>%
+    arrange(Pitcher, PA_UID, pitch_order) %>%
     mutate(
-      # Determine if this pitch is a ball based on Result
+      # Determine if this pitch is a ball based on description
       Is_Ball = case_when(
-        grepl("Ball|Hit By Pitch", Result, ignore.case = TRUE) ~ 1,
+        grepl("ball|hit_by_pitch", pitch_description, ignore.case = TRUE) ~ 1,
         TRUE ~ 0
       ),
-      # Simple approach: Calculate strikes first, then handle fouls
-      Temp_Strike = case_when(
-        grepl("Called Strike|Swinging Strike", Result, ignore.case = TRUE) ~ 1,
-        grepl("Foul", Result, ignore.case = TRUE) ~ 1,
-        TRUE ~ 0
-      ),
-      # Calculate cumulative strikes up to previous pitch
-      Cum_Strikes_Prev = lag(cumsum(Temp_Strike), default = 0),
-      # Now determine if current pitch actually counts as a strike (handle 2-strike fouls)
+      # Determine if this pitch is a strike (handle fouls with 2 strikes)
       Is_Strike = case_when(
-        grepl("Called Strike|Swinging Strike", Result, ignore.case = TRUE) ~ 1,
-        grepl("Foul", Result, ignore.case = TRUE) & Cum_Strikes_Prev < 2 ~ 1,
-        grepl("Foul", Result, ignore.case = TRUE) & Cum_Strikes_Prev >= 2 ~ 0,
+        grepl("called_strike|swinging_strike", pitch_description, ignore.case = TRUE) ~ 1,
+        grepl("foul", pitch_description, ignore.case = TRUE) & lag(cumsum(case_when(
+          grepl("called_strike|swinging_strike|foul", pitch_description, ignore.case = TRUE) ~ 1,
+          TRUE ~ 0
+        )), default = 0) < 2 ~ 1,
         TRUE ~ 0
       ),
       # Calculate running count for display (what count was BEFORE this pitch)
       Running_Balls = lag(cumsum(Is_Ball), default = 0),
       Running_Strikes = lag(cumsum(Is_Strike), default = 0),
       # Create Count string - ALWAYS starts at 0-0 for first pitch in PA
-      Count = paste0(Running_Balls, "-", Running_Strikes)
+      Count = paste0(Running_Balls, "-", Running_Strikes),
+      # Check if this is a terminal event
+      Is_Terminal = case_when(
+        grepl("strikeout|single|double|triple|home_run|walk|groundout|flyout|lineout|field_out|force_out", pitch_events, ignore.case = TRUE) ~ TRUE,
+        grepl("\\*\\*(Strikeout|Single|Double|Triple|Home Run|Walk|In Play)", Result, ignore.case = TRUE) ~ TRUE,
+        TRUE ~ FALSE
+      )
+    ) %>%
+    ungroup() %>%
+    # Recalculate global PA numbers across all games
+    arrange(Pitcher, game_datetime, GamePK, PA_UID, pitch_order) %>%
+    group_by(Pitcher) %>%
+    mutate(
+      # Global pitch number (recalculated after final sort)
+      `Pitch #` = row_number(),
+      # Global PA number across all games
+      `PA #` = cumsum(c(1, PA_UID[-1] != PA_UID[-length(PA_UID)]))
+    ) %>%
+    group_by(Pitcher, `PA #`) %>%
+    mutate(
+      # Recalculate pitch number within PA
+      `Pitch # in PA` = row_number()
     ) %>%
     ungroup() %>%
     mutate(
