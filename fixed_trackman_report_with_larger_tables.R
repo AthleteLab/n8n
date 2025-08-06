@@ -138,29 +138,51 @@ create_heatmaps_by_pitch <- function(data) {
     group_by(PitchType) %>%
     summarise(count = n(), .groups = 'drop')
   
-  # Create base plot
+  # Create base plot with Baseball Savant styling
   p <- ggplot(data, aes(x = PlateLocSide, y = PlateLocHeight))
   
-  # Add heatmaps only for pitch types with 5+ pitches
+  # Add contour heatmaps only for pitch types with 5+ pitches (Baseball Savant style)
   data_with_heatmap <- data %>%
     left_join(pitch_counts, by = "PitchType") %>%
     filter(count >= 5)
   
   if(nrow(data_with_heatmap) > 0) {
-    p <- p + geom_density_2d_filled(data = data_with_heatmap, alpha = 0.5)
+    # Use stat_density_2d_filled with Baseball Savant-like colors
+    p <- p + stat_density_2d_filled(data = data_with_heatmap, 
+                                    alpha = 0.7, 
+                                    contour_var = "ndensity",
+                                    bins = 8) +
+             scale_fill_viridis_d(option = "plasma", direction = -1, alpha = 0.8)
   }
   
   # Add points for all pitch types (essential for <5 pitches, overlay for 5+)
   p <- p + 
-    geom_point(aes(color = PitchType), alpha = 0.8, size = 2) +
+    geom_point(aes(color = PitchType), alpha = 0.9, size = 1.5, stroke = 0.3) +
     scale_color_manual(values = pitch_colors) +
+    # Strike zone rectangle (Baseball Savant style)
     geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
-              fill = NA, color = "black", size = 1) +
-    facet_wrap(~ PitchType) +
+              fill = NA, color = "white", size = 1.2) +
+    geom_rect(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5,
+              fill = NA, color = "black", size = 0.8) +
+    # Baseball Savant-style background and theming
+    facet_wrap(~ PitchType, scales = "free") +
     coord_fixed(xlim = c(-2.5, 2.5), ylim = c(0, 5)) +
-    theme_minimal() +
-    labs(title = "Location Heatmaps by Pitch Type") +
-    theme(legend.position = "none")
+    theme_dark() +
+    theme(
+      panel.background = element_rect(fill = "gray20"),
+      plot.background = element_rect(fill = "gray15"),
+      panel.grid.major = element_line(color = "gray30", size = 0.3),
+      panel.grid.minor = element_line(color = "gray25", size = 0.2),
+      strip.background = element_rect(fill = "gray10"),
+      strip.text = element_text(color = "white", face = "bold", size = 11),
+      axis.text = element_text(color = "white", size = 9),
+      axis.title = element_text(color = "white", size = 10),
+      legend.position = "none",
+      panel.border = element_rect(color = "gray40", fill = NA, size = 0.5)
+    ) +
+    labs(title = "Location Heatmaps by Pitch Type",
+         x = "Horizontal Location (feet)", 
+         y = "Vertical Location (feet)")
   
   return(p)
 }
