@@ -543,7 +543,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     page2_arsenal,
     textGrob("Location Heatmaps by Pitch Type (Pitcher's View)", gp = gpar(fontsize = 14, fontface = "bold")),
     page2_heatmaps,
-    heights = c(0.4, 2, 0.3, 4)
+    heights = c(0.3, 1.8, 0.2, 4.2)
   )
   
   # PAGE 3 - vs RHB  
@@ -555,7 +555,7 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     page3_arsenal,
     textGrob("Location Heatmaps by Pitch Type (Pitcher's View)", gp = gpar(fontsize = 14, fontface = "bold")),
     page3_heatmaps,
-    heights = c(0.4, 2, 0.3, 4)
+    heights = c(0.3, 1.8, 0.2, 4.2)
   )
   
   # PAGE 4 - PITCH LOG (FIXED VERSION)
