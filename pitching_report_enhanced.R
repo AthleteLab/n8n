@@ -177,7 +177,7 @@ create_release_plot <- function(data) {
                  inherit.aes = FALSE, alpha = 0.9) +
          # Add mound shading for 3D effect (circular top surface)
      geom_polygon(data = data.frame(
-       x = 0.8 * cos(seq(0, 2*pi, length.out = 17)),
+       x = 0.8 * cos(seq(0, 2*pi, length.out = 17)[-17]),
        y = rep(mound_height * 0.9, 16)
      ), aes(x = x, y = y), 
      fill = "#CD853F", color = "#A0522D", size = 0.8, 
