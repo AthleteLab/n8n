@@ -608,18 +608,44 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   print("First 3 PAs for debugging:")
   print(debug_pas)
   
-  # Create table with smaller font to fit more columns
-  page4_table <- tableGrob(pitch_log, rows = NULL, 
-                          theme = ttheme_default(
-                            core = list(fg_params = list(cex = 0.7)),  # Smaller text
-                            colhead = list(fg_params = list(cex = 0.7, fontface = "bold"))  # Smaller headers
-                          ))
+  # Split pitch log into chunks for multiple pages
+  total_pitches <- nrow(pitch_log)
+  pitches_per_page <- ceiling(total_pitches / 2)  # Split into 2 pages
   
-  page4 <- grid.arrange(
-    textGrob(paste("Page 4 - Complete Pitch Log:", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
-    page4_table,
+  # Page 4A - First half of pitches
+  pitch_log_page1 <- pitch_log %>% slice(1:pitches_per_page)
+  
+  # Create markdown-style table for page 4A
+  page4a_table <- tableGrob(pitch_log_page1, rows = NULL, 
+                           theme = ttheme_default(
+                             core = list(fg_params = list(cex = 0.8)),  # Slightly larger text
+                             colhead = list(fg_params = list(cex = 0.8, fontface = "bold"))
+                           ))
+  
+  page4a <- grid.arrange(
+    textGrob(paste("Page 4A - Pitch Log (Part 1):", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
+    page4a_table,
     heights = c(0.5, 6)
   )
+  
+  # Page 4B - Second half of pitches (if exists)
+  if (total_pitches > pitches_per_page) {
+    pitch_log_page2 <- pitch_log %>% slice((pitches_per_page + 1):total_pitches)
+    
+    page4b_table <- tableGrob(pitch_log_page2, rows = NULL, 
+                             theme = ttheme_default(
+                               core = list(fg_params = list(cex = 0.8)),
+                               colhead = list(fg_params = list(cex = 0.8, fontface = "bold"))
+                             ))
+    
+    page4b <- grid.arrange(
+      textGrob(paste("Page 4B - Pitch Log (Part 2):", pitcher_name), gp = gpar(fontsize = 16, fontface = "bold")),
+      page4b_table,
+      heights = c(0.5, 6)
+    )
+  } else {
+    page4b <- NULL
+  }
   
   # Save all pages
   clean_pitcher_name <- gsub("[, ]", "_", pitcher_name)
@@ -627,9 +653,14 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   ggsave(paste0(clean_pitcher_name, "_Page1_Summary_", filename_date, ".pdf"), page1, width = 12, height = 16)
   ggsave(paste0(clean_pitcher_name, "_Page2_vs_LHB_", filename_date, ".pdf"), page2, width = 12, height = 16)
   ggsave(paste0(clean_pitcher_name, "_Page3_vs_RHB_", filename_date, ".pdf"), page3, width = 12, height = 16)
-  ggsave(paste0(clean_pitcher_name, "_Page4_PitchLog_", filename_date, ".pdf"), page4, width = 12, height = 16)
+  ggsave(paste0(clean_pitcher_name, "_Page4A_PitchLog_Part1_", filename_date, ".pdf"), page4a, width = 12, height = 16)
   
-  print(paste("Generated comprehensive 4-page report for", pitcher_name))
+  if (!is.null(page4b)) {
+    ggsave(paste0(clean_pitcher_name, "_Page4B_PitchLog_Part2_", filename_date, ".pdf"), page4b, width = 12, height = 16)
+  }
+  
+  pages_generated <- ifelse(is.null(page4b), 4, 5)
+  print(paste("Generated comprehensive", pages_generated, "page report for", pitcher_name))
 }
 
 # ORIGINAL SINGLE-PAGE FUNCTION (UNCHANGED)
