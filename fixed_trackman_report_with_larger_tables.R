@@ -654,11 +654,11 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
   
   if(length(new_pa_rows) > 0) {
     for(row_idx in new_pa_rows) {
-      # Add horizontal line above the new PA row
+      # Add horizontal line on top of the new PA row (add 1 to account for header)
       line_grob <- segmentsGrob(x0 = 0, x1 = 1, y0 = 1, y1 = 1, 
                                 gp = gpar(lwd = 3, col = "black"))
       page4a_table <- gtable_add_grob(page4a_table, line_grob, 
-                                      t = row_idx, b = row_idx, 
+                                      t = row_idx + 1, b = row_idx + 1, 
                                       l = 1, r = ncol(page4a_table))
     }
   }
@@ -690,11 +690,11 @@ create_comprehensive_pitching_report <- function(data, pitcher_name) {
     
     if(length(new_pa_rows_4b) > 0) {
       for(row_idx in new_pa_rows_4b) {
-        # Add horizontal line above the new PA row
+        # Add horizontal line on top of the new PA row (add 1 to account for header)
         line_grob <- segmentsGrob(x0 = 0, x1 = 1, y0 = 1, y1 = 1, 
                                   gp = gpar(lwd = 3, col = "black"))
         page4b_table <- gtable_add_grob(page4b_table, line_grob, 
-                                        t = row_idx, b = row_idx, 
+                                        t = row_idx + 1, b = row_idx + 1, 
                                         l = 1, r = ncol(page4b_table))
       }
     }
